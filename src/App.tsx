@@ -23,6 +23,7 @@ import Sidebar from './components/Sidebar.jsx'
 import { DatasetProvider } from './context/DatasetContext.jsx'
 import Privacy from './pages/Privacy.jsx'
 import CrewRouteGenerator from './pages/CrewRouteGenerator.jsx'
+import CouplingExperiment from './pages/CouplingExperiment.jsx'
 import Terms from './pages/Terms.jsx'
 import './App.css'
 
@@ -80,6 +81,14 @@ function App() {
                   element={
                     <AdminGuard>
                       <CrewRouteGenerator />
+                    </AdminGuard>
+                  }
+                />
+                <Route
+                  path="/dev/coupling-experiment"
+                  element={
+                    <AdminGuard>
+                      <CouplingExperiment />
                     </AdminGuard>
                   }
                 />
