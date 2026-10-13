@@ -47,6 +47,10 @@ function parseCouplingOperation(value, rawIndex, keySide, childSide = "") {
   if (!match) return null
 
   const type = Number(match[1])
+  // 通常の親Operationにある出区・入区は既存処理が扱う。
+  // ここでは .0B などの子Operationに記述された補助イベントだけを追加する。
+  if ((type === 3 || type === 4) && !childSide) return null
+
   const beforeDollar = String(match[2] || "").trim()
   const afterDollar = String(match[3] || "").trim()
   const timeToken = type === 1 || type === 2
@@ -67,7 +71,7 @@ function parseCouplingOperation(value, rawIndex, keySide, childSide = "") {
     : ""
 
   if ((type === 3 || type === 4) && operationNumber && operationNumber !== "0") {
-    label += `（${operationNumber}番運用）`
+    label = `${operationNumber}番運用 ${label}`
   }
 
   return {
