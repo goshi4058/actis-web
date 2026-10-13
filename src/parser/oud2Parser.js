@@ -42,10 +42,65 @@ function parseOperationNotes(rawValue, side) {
   const seen = new Set()
   return notes.filter(note => { const key = `${note.label}|${note.time}|${note.trackKey}`; if (seen.has(key)) return false; seen.add(key); return true })
 }
+function parseCouplingOperation(value, rawIndex, keySide, childSide = "") {
+  const match = String(value || "").match(/^(\d+)\/([^$]*)(?:\$(.*))?$/)
+  if (!match) return null
+
+  const type = Number(match[1])
+  const beforeDollar = String(match[2] || "").trim()
+  const afterDollar = String(match[3] || "").trim()
+  const timeToken = type === 1 || type === 2
+    ? afterDollar.split("/")[0]
+    : beforeDollar
+  const time = normalizeOperationTime(timeToken)
+  if (!time) return null
+
+  let label = ""
+  if (type === 1) label = beforeDollar === "0" ? "後方増結" : "前方増結"
+  else if (type === 2) label = beforeDollar === "0" ? "後方解結" : "前方解結"
+  else if (type === 3) label = "出区"
+  else if (type === 4) label = "入区"
+  else return null
+
+  const operationNumber = type === 3 || type === 4
+    ? (afterDollar.match(/(?:^|\/)([^/]+)\s*$/)?.[1] || "")
+    : ""
+
+  if ((type === 3 || type === 4) && operationNumber && operationNumber !== "0") {
+    label += `（${operationNumber}番運用）`
+  }
+
+  return {
+    rawIndex,
+    side: childSide || keySide,
+    label,
+    time,
+    trackKey: "",
+    source: "oud2-operation"
+  }
+}
+
 function parseOperationLine(train, line) {
   if (!train || !line) return
-  const match = String(line).match(/^Operation(\d+)([AB])=(.*)$/); if (!match) return
-  const rawIndex = parseInt(match[1], 10), side = match[2], value = match[3] || ""
+  const match = String(line).match(/^Operation(\d+)([AB])(?:\.(\d+)([AB]))?=(.*)$/)
+  if (!match) return
+
+  const rawIndex = parseInt(match[1], 10)
+  const side = match[2]
+  const childSide = match[4] || ""
+  const value = match[5] || ""
+  const isChildOperation = Boolean(match[3])
+
+  const couplingOperation = parseCouplingOperation(value, rawIndex, side, childSide)
+  if (couplingOperation) {
+    if (!Array.isArray(train.couplingOperations)) train.couplingOperations = []
+    train.couplingOperations.push(couplingOperation)
+  }
+
+  // 子Operationは増解結・入出区などの補助記述として保持し、
+  // 列車の折返し判定に使う通常のoperationLinesには混ぜない。
+  if (isChildOperation) return
+
   if (!Array.isArray(train.operationLines)) train.operationLines = []
   const notes = parseOperationNotes(value, side)
   train.operationLines.push({ rawIndex, side, value, notes })
@@ -53,6 +108,28 @@ function parseOperationLine(train, line) {
   notes.forEach(note => train.operationRemarks.push({ rawIndex, side, label: note.label, time: normalizeOperationTime(note.time), trackKey: note.trackKey || "" }))
   const operationMatch = value.match(/\$\/([^,]+)/)
   if (operationMatch && operationMatch[1] && !train.unyo) train.unyo = operationMatch[1].trim()
+}
+
+function applyCouplingOperations(train) {
+  if (!train || !Array.isArray(train.stations) || !Array.isArray(train.couplingOperations)) return
+  for (const operation of train.couplingOperations) {
+    const station = train.stations.find(item => Number(item?.rawIndex) === Number(operation.rawIndex))
+    if (!station) continue
+    if (!Array.isArray(station.operationRemarks)) station.operationRemarks = []
+    const exists = station.operationRemarks.some(item =>
+      item?.source === operation.source &&
+      item?.label === operation.label &&
+      item?.time === operation.time
+    )
+    if (!exists) station.operationRemarks.push({ ...operation })
+    station.operationRemarks.sort((a, b) => {
+      const aTime = String(a?.time || "").replace(/[^0-9]/g, "")
+      const bTime = String(b?.time || "").replace(/[^0-9]/g, "")
+      if (!aTime) return bTime ? 1 : 0
+      if (!bTime) return -1
+      return Number(aTime.padEnd(6, "0")) - Number(bTime.padEnd(6, "0"))
+    })
+  }
 }
 function parseEkiJikoku(text) {
   if (!text) return []
@@ -251,6 +328,9 @@ function parseOud2(text, fileName = "") {
     const type = result.trainTypes[train.typeIndex] || null
     train.type = type?.name || ""; train.typeShort = type?.abbreviation || ""; train.trainTypeColor = type?.JikokuhyouMojiColor || type?.trainTypeColor || ""; train.JikokuhyouMojiColor = type?.JikokuhyouMojiColor || ""; train.JikokuhyouBackColor = type?.JikokuhyouBackColor || ""
     if (train.stations?.length > 0) train.destination = train.stations[train.stations.length - 1].name
+  }
+  for (const direction of ["Kudari", "Nobori"]) {
+    for (const train of result.trains[direction]) applyCouplingOperations(train)
   }
   analyzeOperations([...result.trains.Kudari, ...result.trains.Nobori])
   return result
