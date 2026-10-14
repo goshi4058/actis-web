@@ -60,8 +60,8 @@ function parseCouplingOperation(value, rawIndex, keySide, childSide = "") {
   if (!time) return null
 
   let label = ""
-  if (type === 1) label = beforeDollar === "0" ? "後方増結" : "前方増結"
-  else if (type === 2) label = beforeDollar === "0" ? "後方解結" : "前方解結"
+  if (type === 1) label = "増結 ●レ"
+  else if (type === 2) label = "解結 ●レ"
   else if (type === 3) label = "出区"
   else if (type === 4) label = "入区"
   else return null
@@ -101,6 +101,14 @@ function parseOperationLine(train, line) {
     train.couplingOperations.push(couplingOperation)
   }
 
+  // Operation type 5 の $2 / $3 は、増結後に使用する列車番号を示す。
+  // $2: 増結駅で当該列車のスタフを区切る。$3: 終点まで継続する。
+  const continuationMatch = value.match(/^5\/\$(2|3)(?:\/|$)/)
+  if (continuationMatch) {
+    if (!Array.isArray(train.couplingContinuationOperations)) train.couplingContinuationOperations = []
+    train.couplingContinuationOperations.push({ rawIndex, side, mode: Number(continuationMatch[1]) })
+  }
+
   // 子Operationは増解結・入出区などの補助記述として保持し、
   // 列車の折返し判定に使う通常のoperationLinesには混ぜない。
   if (isChildOperation) return
@@ -133,6 +141,34 @@ function applyCouplingOperations(train) {
       if (!bTime) return -1
       return Number(aTime.padEnd(6, "0")) - Number(bTime.padEnd(6, "0"))
     })
+  }
+}
+
+function applyCouplingContinuations(train) {
+  if (!train || !Array.isArray(train.couplingContinuationOperations)) return
+
+  for (const operation of train.couplingContinuationOperations) {
+    // $2 / $3 は運転データ全体を切らず、スタフの表示範囲だけを制御する。
+    train.staffCouplingMode = operation.mode
+    if (operation.mode === 2) train.staffEndRawIndex = operation.rawIndex
+
+    const station = Array.isArray(train.stations)
+      ? train.stations.find(item => Number(item?.rawIndex) === Number(operation.rawIndex))
+      : null
+    if (!station) continue
+
+    if (!Array.isArray(station.operationRemarks)) station.operationRemarks = []
+    const exists = station.operationRemarks.some(item => String(item?.label || "").trim() === "増結 ●レ")
+    if (!exists) {
+      station.operationRemarks.push({
+        rawIndex: operation.rawIndex,
+        side: operation.side,
+        label: "増結 ●レ",
+        time: "",
+        trackKey: "",
+        source: "oud2-coupling-continuation"
+      })
+    }
   }
 }
 function parseEkiJikoku(text) {
@@ -334,7 +370,10 @@ function parseOud2(text, fileName = "") {
     if (train.stations?.length > 0) train.destination = train.stations[train.stations.length - 1].name
   }
   for (const direction of ["Kudari", "Nobori"]) {
-    for (const train of result.trains[direction]) applyCouplingOperations(train)
+    for (const train of result.trains[direction]) {
+      applyCouplingOperations(train)
+      applyCouplingContinuations(train)
+    }
   }
   analyzeOperations([...result.trains.Kudari, ...result.trains.Nobori])
   return result
