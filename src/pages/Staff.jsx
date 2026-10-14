@@ -768,6 +768,41 @@ function Staff() {
               stations
             )
 
+          // 増結元列車の運転区間は、接続先列車の運番や列車番号を引き継がず、
+          // 増結駅より先の駅だけをスタフ表示に追加する。
+          const continuationTrainNo = String(data.coupledContinuationTrainNo || "").trim()
+          const continuationTrain = continuationTrainNo
+            ? loadedTrains.find(item =>
+                String(item.trainNo || item.Ressyabangou || "").trim() === continuationTrainNo &&
+                (!effectiveDatasetId || String(item.datasetId || "") === String(effectiveDatasetId))
+              )
+            : null
+
+          if (continuationTrain && Array.isArray(continuationTrain.stations)) {
+            const normalizeStationName = value => String(value || "").replace(/\s+/g, "").trim()
+            const joinStationName = normalizeStationName(
+              stations[stations.length - 1]?.name || stations[stations.length - 1]?.shortName
+            )
+            const continuationStations = continuationTrain.stations
+            const joinIndex = continuationStations.findIndex(station =>
+              normalizeStationName(station?.name || station?.shortName) === joinStationName
+            )
+
+            if (joinStationName && joinIndex >= 0) {
+              const appendedStations = continuationStations.slice(joinIndex + 1).map(station => ({
+                ...station,
+                name: station?.name || "",
+                track: station?.track || station?.trackName || "",
+                arrival: station?.arrival || station?.arr || "",
+                departure: station?.departure || station?.dep || "",
+                remarks: station?.remarks || "",
+                isPass: station?.isPass === true,
+                stopType: String(station?.stopType ?? "1"),
+                operationRemarks: Array.isArray(station?.operationRemarks) ? [...station.operationRemarks] : []
+              }))
+              stations = [...stations, ...appendedStations]
+            }
+          }
 
           let operatingStations =
             stations.filter(
@@ -777,17 +812,6 @@ function Staff() {
                 station.stopType !==
                   "3"
             )
-
-          // Operation type 5 の $2 は増結駅でスタフ表示を区切る。
-          // 列車データ自体は切らないため、運用解析や既存の車庫出区増結には影響しない。
-          if (Number(data.staffCouplingMode) === 2 && data.staffEndRawIndex !== undefined && data.staffEndRawIndex !== null) {
-            const couplingIndex = operatingStations.findIndex(
-              station => Number(station?.rawIndex) === Number(data.staffEndRawIndex)
-            )
-            if (couplingIndex >= 0) {
-              operatingStations = operatingStations.slice(0, couplingIndex + 1)
-            }
-          }
 
           // 行路別スタフでは、乗務員交代駅を境界として
           // 「自分の行路が担当する区間」だけを表示する。
@@ -971,7 +995,7 @@ function Staff() {
             finalDest,
 
             destination:
-              Number(data.staffCouplingMode) === 2
+              data.coupledContinuationTrainNo
                 ? finalDest
                 : data.destination || finalDest
 
