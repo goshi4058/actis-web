@@ -328,9 +328,39 @@ function assignOperations(trains) {
   })
   trains.forEach(train => { if (!visited.has(train)) { groups.push([train]); visited.add(train) } })
   groups.forEach(group => {
-    let knownUnyo = ""; for (const train of group) if (train.unyo && String(train.unyo).trim() !== "") { knownUnyo = String(train.unyo).trim(); break }
-    if (!knownUnyo) return
-    group.forEach((train, index) => { if (!train.unyo || String(train.unyo).trim() === "") train.unyo = knownUnyo; train.operationSequence = index + 1; train.operationLength = group.length })
+    // 通常の折返し・運用連鎖では従来どおり運番を補完する。
+    // ただし増結関係で明示的に接続した列車間は別運番として扱う。
+    const segments = []
+    let segment = []
+    for (const train of group) {
+      const previous = segment[segment.length - 1]
+      const couplingBoundary = previous && (
+        String(previous.coupledContinuationTrainNo || "") === String(train.trainNo || "") ||
+        String(train.coupledContinuationTrainNo || "") === String(previous.trainNo || "")
+      )
+      if (couplingBoundary) {
+        segments.push(segment)
+        segment = []
+      }
+      segment.push(train)
+    }
+    if (segment.length) segments.push(segment)
+
+    segments.forEach(part => {
+      let knownUnyo = ""
+      for (const train of part) {
+        if (train.unyo && String(train.unyo).trim() !== "") {
+          knownUnyo = String(train.unyo).trim()
+          break
+        }
+      }
+      if (!knownUnyo) return
+      part.forEach((train, index) => {
+        if (!train.unyo || String(train.unyo).trim() === "") train.unyo = knownUnyo
+        train.operationSequence = index + 1
+        train.operationLength = part.length
+      })
+    })
   })
   return groups
 }
