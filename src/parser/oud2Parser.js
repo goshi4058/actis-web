@@ -80,6 +80,7 @@ function parseCouplingOperation(value, rawIndex, keySide, childSide = "") {
     label,
     // 増解結は駅の記事として表示するため、時刻を記事本文へ重ねない。
     time: type === 1 || type === 2 ? "" : time,
+    matchTime: type === 1 || type === 2 ? normalizeOperationTime(afterDollar.split("/")[0]) : "",
     trackKey: "",
     source: "oud2-operation"
   }
@@ -172,6 +173,38 @@ function applyCouplingContinuations(train) {
     }
   }
 }
+function linkCoupledContinuationTrains(trains) {
+  // Operation type 5 の $2 を持つ列車を、同じ駅・近接時刻で増結する列車へ関連付ける。
+  // 列車番号・運番・折返し関係は変更せず、スタフ上の連結先だけを保持する。
+  for (const train of trains) {
+    if (Number(train.staffCouplingMode) !== 2 || !Array.isArray(train.stations)) continue
+    const continuation = train.couplingContinuationOperations?.find(item => Number(item.mode) === 2)
+    if (!continuation) continue
+    const station = train.stations.find(item => Number(item?.rawIndex) === Number(continuation.rawIndex))
+    if (!station?.name) continue
+    const trainTime = timeToSec(station.arrival || station.departure || station.single)
+    let best = null
+    let bestDiff = Infinity
+
+    for (const candidate of trains) {
+      if (candidate === train || !Array.isArray(candidate.stations)) continue
+      for (const operation of candidate.couplingOperations || []) {
+        if (operation.label !== "増結 ●レ") continue
+        const couplingStation = candidate.stations.find(item => Number(item?.rawIndex) === Number(operation.rawIndex))
+        if (!couplingStation || normalizeStation(couplingStation.name) !== normalizeStation(station.name)) continue
+        const couplingTime = timeToSec(operation.matchTime || couplingStation.departure || couplingStation.arrival || couplingStation.single)
+        if (trainTime < 0 || couplingTime < 0) continue
+        const diff = Math.abs(couplingTime - trainTime)
+        if (diff > 300 || diff >= bestDiff) continue
+        best = candidate
+        bestDiff = diff
+      }
+    }
+
+    if (best) train.coupledContinuationTrainNo = String(best.trainNo || "")
+  }
+}
+
 function parseEkiJikoku(text) {
   if (!text) return []
   return String(text).split(",").map(value => {
@@ -294,10 +327,12 @@ function assignOperations(trains) {
     if (group.length) groups.push(group)
   })
   trains.forEach(train => { if (!visited.has(train)) { groups.push([train]); visited.add(train) } })
+  // 運番は列車ごとの情報。折返し・接続グループを理由に別列車へコピーしない。
   groups.forEach(group => {
-    let knownUnyo = ""; for (const train of group) if (train.unyo && String(train.unyo).trim() !== "") { knownUnyo = String(train.unyo).trim(); break }
-    if (!knownUnyo) return
-    group.forEach((train, index) => { if (!train.unyo || String(train.unyo).trim() === "") train.unyo = knownUnyo; train.operationSequence = index + 1; train.operationLength = group.length })
+    group.forEach((train, index) => {
+      train.operationSequence = index + 1
+      train.operationLength = group.length
+    })
   })
   return groups
 }
@@ -376,7 +411,9 @@ function parseOud2(text, fileName = "") {
       applyCouplingContinuations(train)
     }
   }
-  analyzeOperations([...result.trains.Kudari, ...result.trains.Nobori])
+  const allTrains = [...result.trains.Kudari, ...result.trains.Nobori]
+  linkCoupledContinuationTrains(allTrains)
+  analyzeOperations(allTrains)
   return result
 }
 
