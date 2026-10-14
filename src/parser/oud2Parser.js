@@ -78,7 +78,8 @@ function parseCouplingOperation(value, rawIndex, keySide, childSide = "") {
     rawIndex,
     side: childSide || keySide,
     label,
-    time,
+    // 増解結は駅の記事として表示するため、時刻を記事本文へ重ねない。
+    time: type === 1 || type === 2 ? "" : time,
     trackKey: "",
     source: "oud2-operation"
   }
