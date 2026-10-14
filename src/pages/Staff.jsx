@@ -779,7 +779,7 @@ function Staff() {
             : null
 
           if (continuationTrain && Array.isArray(continuationTrain.stations)) {
-            const normalizeStationName = value => String(value || "").replace(/\\s+/g, "").trim()
+            const normalizeStationName = value => String(value || "").replace(/\s+/g, "").trim()
             const joinStationName = normalizeStationName(
               stations[stations.length - 1]?.name || stations[stations.length - 1]?.shortName
             )
