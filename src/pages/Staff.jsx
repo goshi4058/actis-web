@@ -778,6 +778,17 @@ function Staff() {
                   "3"
             )
 
+          // Operation type 5 の $2 は増結駅でスタフ表示を区切る。
+          // 列車データ自体は切らないため、運用解析や既存の車庫出区増結には影響しない。
+          if (Number(data.staffCouplingMode) === 2 && data.staffEndRawIndex !== undefined && data.staffEndRawIndex !== null) {
+            const couplingIndex = operatingStations.findIndex(
+              station => Number(station?.rawIndex) === Number(data.staffEndRawIndex)
+            )
+            if (couplingIndex >= 0) {
+              operatingStations = operatingStations.slice(0, couplingIndex + 1)
+            }
+          }
+
           // 行路別スタフでは、乗務員交代駅を境界として
           // 「自分の行路が担当する区間」だけを表示する。
           // rosterId がない場合（列車一覧から開いた場合）は従来どおり全区間を表示。
@@ -960,8 +971,9 @@ function Staff() {
             finalDest,
 
             destination:
-              data.destination ||
-              finalDest
+              Number(data.staffCouplingMode) === 2
+                ? finalDest
+                : data.destination || finalDest
 
           })
 
