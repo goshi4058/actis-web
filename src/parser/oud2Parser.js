@@ -327,12 +327,10 @@ function assignOperations(trains) {
     if (group.length) groups.push(group)
   })
   trains.forEach(train => { if (!visited.has(train)) { groups.push([train]); visited.add(train) } })
-  // 運番は列車ごとの情報。折返し・接続グループを理由に別列車へコピーしない。
   groups.forEach(group => {
-    group.forEach((train, index) => {
-      train.operationSequence = index + 1
-      train.operationLength = group.length
-    })
+    let knownUnyo = ""; for (const train of group) if (train.unyo && String(train.unyo).trim() !== "") { knownUnyo = String(train.unyo).trim(); break }
+    if (!knownUnyo) return
+    group.forEach((train, index) => { if (!train.unyo || String(train.unyo).trim() === "") train.unyo = knownUnyo; train.operationSequence = index + 1; train.operationLength = group.length })
   })
   return groups
 }
