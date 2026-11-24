@@ -1,6 +1,8 @@
 import "./Staff.css"
 
-import {  useEffect,
+import {
+  Fragment,
+  useEffect,
   useMemo,
   useState
 } from "react"
@@ -11,7 +13,8 @@ import {
 } from "firebase/database"
 
 import {
-  Link
+  Link,
+  useSearchParams
 } from "react-router-dom"
 
 import {
@@ -23,7 +26,8 @@ import {
   useDataset
 } from "../context/DatasetContext"
 
-import DatasetSelector from "../components/dataset/DatasetSelector"
+import Icon from "../components/shell/Icon.jsx"
+import PageHead from "../components/shell/PageHead.jsx"
 
 
 function getDirectionLabel(
@@ -702,388 +706,157 @@ function sortOperationTrains(
 }
 
 
-function TrainCard({
-  train,
-  index,
-  total
-}) {
-
-  const previous =
-    train.previousTrainNo ||
-    ""
-
-
-  const next =
-    train.nextTrainNo ||
-    ""
-
-
-  return (
-
-    <div
-      className="operation-train-wrapper"
-    >
-
-      <Link
-        to={
-          `/staff/${train.id}`
-        }
-
-        className="operation-train-card"
-      >
-
-        <div
-          className="operation-train-sequence"
-        >
-
-          {train.operationSequence ||
-            index + 1}
-
-        </div>
-
-
-        <div
-          className="operation-train-main"
-        >
-
-          <div
-            className="operation-train-top"
-          >
-
-            <span
-              className="operation-train-no"
-            >
-
-              {train.trainNo ||
-                "—"}
-
-            </span>
-
-
-            <span
-              className="operation-train-type"
-              style={
-                /^#[0-9a-fA-F]{6}$/.test(String(train.trainTypeColor || "").trim())
-                  ? {
-                      color: String(train.trainTypeColor).trim(),
-                      borderColor: String(train.trainTypeColor).trim(),
-                      backgroundColor: "#ffffff"
-                    }
-                  : undefined
-              }
-            >
-
-              {train.typeShort ||
-                train.type ||
-                "—"}
-
-            </span>
-
-
-            <span
-              className="operation-train-direction"
-            >
-
-              {getDirectionLabel(
-                train.direction
-              )}
-
-            </span>
-
-          </div>
-
-
-          <div
-            className="operation-train-route"
-          >
-
-            <span>
-              {getOrigin(
-                train
-              )}
-            </span>
-
-
-            <span
-              className="operation-route-arrow"
-            >
-              →
-            </span>
-
-
-            <strong>
-              {getDestination(
-                train
-              )}
-            </strong>
-
-          </div>
-
-
-          <div
-            className="operation-train-time"
-          >
-
-            <span>
-              {getStartTime(
-                train
-              )}
-            </span>
-
-
-            <span>
-              →
-            </span>
-
-
-            <span>
-              {getEndTime(
-                train
-              )}
-            </span>
-
-          </div>
-
-        </div>
-
-
-        <div
-          className="operation-train-next"
-        >
-
-          {previous && (
-
-            <span>
-              前 {previous}
-            </span>
-
-          )}
-
-
-          {next && (
-
-            <span>
-              次 {next}
-            </span>
-
-          )}
-
-        </div>
-
-      </Link>
-
-
-      {index <
-        total - 1 && (
-
-        <div
-          className="operation-connector"
-        >
-
-          <div
-            className="operation-connector-line"
-          />
-
-          <div
-            className="operation-connector-arrow"
-          >
-            ↓
-          </div>
-
-        </div>
-
-      )}
-
-    </div>
-
-  )
-
+const DAY_START = 4 * 60
+const DAY_END = 26 * 60
+
+function timeToMinutes(value) {
+  const text = String(value ?? "").trim()
+  if (!text) {
+    return null
+  }
+  if (text.includes(":")) {
+    const [h, m] = text.split(":").map(Number)
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null
+  }
+  if (!/^\d{3,6}$/.test(text)) {
+    return null
+  }
+  const hm = text.length <= 4 ? text : text.slice(0, -2)
+  const hour = Number(hm.slice(0, -2) || 0)
+  const minute = Number(hm.slice(-2))
+  return hour * 60 + minute
 }
 
+function timedStations(train) {
+  return (Array.isArray(train?.stations) ? train.stations : []).filter(station => getTimeValue(station))
+}
 
-function OperationGroup({
-  operation,
-  trains
-}) {
+function getTrainSpan(train) {
+  const stations = timedStations(train)
+  let start = timeToMinutes(getTimeValue(stations[0]))
+  let end = timeToMinutes(getTimeValue(stations[stations.length - 1]))
+  if (start === null) {
+    return null
+  }
+  if (start < 3 * 60) {
+    start += 24 * 60
+  }
+  if (end === null) {
+    end = start
+  }
+  while (end < start) {
+    end += 24 * 60
+  }
+  return { start, end }
+}
 
-  const sortedTrains =
-    [...trains].sort(
-      sortOperationTrains
-    )
+function validColor(value) {
+  const text = String(value || "").trim()
+  return /^#[0-9a-fA-F]{6}$/.test(text) ? text : ""
+}
 
-
-  const firstTrain =
-    sortedTrains[0]
-
-
-  const lastTrain =
-    sortedTrains[
-      sortedTrains.length - 1
-    ]
-
-
-  const directions = [
-    ...new Set(
-      sortedTrains
-        .map(
-          train =>
-            getDirectionLabel(
-              train.direction
-            )
-        )
-        .filter(
-          value =>
-            value !== "—"
-        )
-    )
-  ]
-
-
+function TypeBadge({ train }) {
+  const color = validColor(train.trainTypeColor)
   return (
+    <span className="ax-type" style={color ? { background: color } : undefined}>
+      {train.typeShort || train.type || "—"}
+    </span>
+  )
+}
 
-    <section
-      className="operation-group"
-    >
+function OperationChain({ trains }) {
+  return (
+    <div className="ax-chain">
+      <div className="ax-chain-track">
+        {trains.map((train, index) => {
+          const previous = trains[index - 1]
+          const prevSpan = previous ? getTrainSpan(previous) : null
+          const span = getTrainSpan(train)
+          const gap = prevSpan && span ? span.start - prevSpan.end : null
 
-      <div
-        className="operation-title"
-      >
-
-        <span>
-          運用
-        </span>
-
-
-        <strong>
-          {operation}
-        </strong>
-
-
-        <span
-          className="operation-count"
-        >
-
-          {sortedTrains.length}
-          列車
-
-        </span>
-
-      </div>
-
-
-      <div
-        className="operation-summary"
-      >
-
-        <div
-          className="operation-summary-item"
-        >
-
-          <span
-            className="operation-summary-label"
-          >
-            開始
-          </span>
-
-
-          <strong>
-            {firstTrain
-              ? getOrigin(
-                  firstTrain
-                )
-              : "—"}
-          </strong>
-
-        </div>
-
-
-        <div
-          className="operation-summary-arrow"
-        >
-          →
-        </div>
-
-
-        <div
-          className="operation-summary-item"
-        >
-
-          <span
-            className="operation-summary-label"
-          >
-            終了
-          </span>
-
-
-          <strong>
-            {lastTrain
-              ? getDestination(
-                  lastTrain
-                )
-              : "—"}
-          </strong>
-
-        </div>
-
-
-        <div
-          className="operation-summary-direction"
-        >
-
-          {directions.join(
-            " / "
-          ) || "方向不明"}
-
-        </div>
-
-      </div>
-
-
-      <div
-        className="operation-train-chain"
-      >
-
-        {sortedTrains.map(
-          (
-            train,
-            index
-          ) => (
-
-            <TrainCard
-              key={
-                train.id
-              }
-
-              train={
-                train
-              }
-
-              index={
-                index
-              }
-
-              total={
-                sortedTrains.length
-              }
-            />
-
+          return (
+            <Fragment key={train.id}>
+              {index > 0 && (
+                <div className="ax-link">
+                  {gap !== null && gap >= 0 ? `${gap}分` : "—"}
+                  <span>{previous && getDestination(previous) === getOrigin(train) ? "折返" : "接続"}</span>
+                </div>
+              )}
+              <Link className="ax-leg" to={`/staff/${train.id}`}>
+                <div className="ax-leg-1">
+                  <b>{train.trainNo || "—"}</b>
+                  <TypeBadge train={train} />
+                  <span className="ax-pill" style={{ height: 18, fontSize: 10.5 }}>
+                    {getDirectionLabel(train.direction)}
+                  </span>
+                </div>
+                <div className="ax-leg-2">{getOrigin(train)} → {getDestination(train)}</div>
+                <div className="ax-leg-3">{getStartTime(train)} – {getEndTime(train)}</div>
+                <div className="ax-leg-4">スタフを開く →</div>
+              </Link>
+            </Fragment>
           )
-        )}
-
+        })}
       </div>
-
-    </section>
-
+    </div>
   )
-
 }
 
+function OperationRow({ operation, trains, open, onToggle }) {
+  const sortedTrains = useMemo(() => [...trains].sort(sortOperationTrains), [trains])
+  const firstTrain = sortedTrains[0]
+  const lastTrain = sortedTrains[sortedTrains.length - 1]
+  const range = DAY_END - DAY_START
+
+  return (
+    <>
+      <tr className={`row ${open ? "open" : ""}`} onClick={onToggle}>
+        <td><Icon name="chevRight" size={16} className="ax-chev" /></td>
+        <td><b className="ax-num">{operation}</b></td>
+        <td className="ax-num">{sortedTrains.length}本</td>
+        <td>
+          <span className="ax-num">{firstTrain ? getStartTime(firstTrain) : "—"}</span>{" "}
+          <span className="sub">{firstTrain ? getOrigin(firstTrain) : ""}</span>
+        </td>
+        <td className="hide-sm">
+          <span className="ax-num">{lastTrain ? getEndTime(lastTrain) : "—"}</span>{" "}
+          <span className="sub">{lastTrain ? getDestination(lastTrain) : ""}</span>
+        </td>
+        <td className="hide-sm">
+          <div className="ax-bar">
+            {sortedTrains.map(train => {
+              const span = getTrainSpan(train)
+              if (!span) {
+                return null
+              }
+              const left = Math.max(0, (span.start - DAY_START) / range * 100)
+              const width = Math.max(0.6, (span.end - span.start) / range * 100)
+              return (
+                <span
+                  key={train.id}
+                  title={`${train.trainNo || ""} ${getStartTime(train)}–${getEndTime(train)}`}
+                  style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%`, background: validColor(train.trainTypeColor) || "#4b5563" }}
+                />
+              )
+            })}
+          </div>
+        </td>
+      </tr>
+      {open && (
+        <tr>
+          <td colSpan={6} style={{ padding: 0, whiteSpace: "normal" }}>
+            <OperationChain trains={sortedTrains} />
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
 
 function Trains() {
 
   const {
-    selectedDatasetId,
-    selectedDataset
+    selectedDatasetId
   } = useDataset()
 
   const [trains, setTrains] =
@@ -1348,194 +1121,118 @@ function Trains() {
     ]?.length || 0
 
 
-  if (
-    loading
-  ) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const query = searchParams.get("q") ?? searchParams.get("op") ?? ""
+  const [openOperation, setOpenOperation] = useState(() => searchParams.get("op") || null)
 
-    return (
-
-      <div
-        className="trains-page"
-      >
-
-        <h1>
-          運用一覧
-        </h1>
-
-
-        <p>
-          読み込み中...
-        </p>
-
-      </div>
-
-    )
-
+  const setQuery = value => {
+    const next = new URLSearchParams(searchParams)
+    next.delete("op")
+    if (value) {
+      next.set("q", value)
+    } else {
+      next.delete("q")
+    }
+    setSearchParams(next, { replace: true })
   }
 
-
-  if (
-    error
-  ) {
-
-    return (
-
-      <div
-        className="trains-page"
-      >
-
-        <h1>
-          運用一覧
-        </h1>
-
-
-        <p>
-          {error}
-        </p>
-
-      </div>
-
+  const filteredNames = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) {
+      return operationNames
+    }
+    return operationNames.filter(operation =>
+      operation.toLowerCase().includes(q) ||
+      operationGroups[operation].some(train =>
+        String(train.trainNo || "").toLowerCase().includes(q) ||
+        String(getDestination(train)).toLowerCase().includes(q)
+      )
     )
+  }, [query, operationNames, operationGroups])
 
-  }
-
-
-  return (
-
-    <div
-      className="trains-page"
-    >
-
-      <DatasetSelector />
-
-      {selectedDataset && (
-        <p className="trains-description">
-          データセット：{selectedDataset.fileName || selectedDataset.railwayName || selectedDataset.id}
-        </p>
-      )}
-
-      <div
-        className="trains-header"
-      >
-
-        <div>
-
-          <h1>
-            運用一覧
-          </h1>
-
-
-          <p
-            className="trains-description"
-          >
-            自分がアップロードした
-            OUD2データの運用を表示します。
-          </p>
-
-        </div>
-
-
-        <div
-          className="trains-stat"
-        >
-
-          <div>
-
-            <strong>
-              {trains.length}
-            </strong>
-
-            <span>
-              列車
-            </span>
-
-          </div>
-
-
-          <div>
-
-            <strong>
-              {configuredCount}
-            </strong>
-
-            <span>
-              運用
-            </span>
-
-          </div>
-
-
-          {unconfiguredCount >
-            0 && (
-
-            <div>
-
-              <strong>
-                {unconfiguredCount}
-              </strong>
-
-              <span>
-                未設定
-              </span>
-
-            </div>
-
-          )}
-
-        </div>
-
-      </div>
-
-
-      {operationNames.length === 0 ? (
-
-        <div
-          className="trains-empty"
-        >
-
-          <p>
-            列車データがありません。
-          </p>
-
-        </div>
-
-      ) : (
-
-        <div
-          className="operations-list"
-        >
-
-          {operationNames.map(
-            operation => (
-
-              <OperationGroup
-                key={
-                  operation
-                }
-
-                operation={
-                  operation
-                }
-
-                trains={
-                  operationGroups[
-                    operation
-                  ]
-                }
-              />
-
-            )
-          )}
-
-        </div>
-
-      )}
-
-    </div>
-
+  const head = (
+    <PageHead
+      crumbs={["閲覧"]}
+      title="運用一覧"
+      description="運用ごとの列車のつながりを一覧します。行をクリックで展開、/ キーで検索。"
+      actions={
+        <button type="button" className="ax-btn" onClick={() => window.print()}>
+          <Icon name="staff" size={16} />印刷
+        </button>
+      }
+    />
   )
 
-}
+  if (loading || error) {
+    return (
+      <div className="trains-page">
+        {head}
+        <div className="ax-card ax-empty">{loading ? "読み込み中…" : error}</div>
+      </div>
+    )
+  }
 
+  return (
+    <div className="trains-page">
+      {head}
+
+      <div className="ax-card" style={{ overflow: "hidden" }}>
+        <div className="ax-toolbar">
+          <label className="ax-field">
+            <Icon name="search" size={15} />
+            <input
+              data-page-search
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              placeholder="運用名・列車番号・行先で絞り込み"
+            />
+          </label>
+          <span className="count ax-num">
+            表示 {filteredNames.length} 件 · 運用 {configuredCount} · 列車 {trains.length}
+            {unconfiguredCount > 0 && ` · 運用未設定 ${unconfiguredCount}`}
+          </span>
+        </div>
+
+        {filteredNames.length === 0 ? (
+          <div className="ax-empty">
+            {operationNames.length === 0 ? "列車データがありません。OUD2をアップロードしてください。" : "該当する運用がありません"}
+          </div>
+        ) : (
+          <table className="ax-table">
+            <colgroup>
+              <col style={{ width: 40 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 70 }} />
+              <col style={{ width: 150 }} />
+              <col style={{ width: 150 }} />
+              <col className="hide-sm" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th />
+                <th>運用</th>
+                <th>列車</th>
+                <th>開始</th>
+                <th className="hide-sm">終了</th>
+                <th className="hide-sm">稼働（4:00 – 26:00）</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredNames.map(operation => (
+                <OperationRow
+                  key={operation}
+                  operation={operation}
+                  trains={operationGroups[operation]}
+                  open={openOperation === operation}
+                  onToggle={() => setOpenOperation(value => (value === operation ? null : operation))}
+                />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default Trains

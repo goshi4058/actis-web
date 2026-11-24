@@ -1,8 +1,10 @@
 import {
+  Fragment,
   useEffect,
   useMemo,
   useState
 } from "react"
+import { Link } from "react-router-dom"
 
 import {
   onAuthStateChanged
@@ -22,7 +24,8 @@ import {
   useDataset
 } from "../context/DatasetContext"
 
-import DatasetSelector from "../components/dataset/DatasetSelector"
+import Icon from "../components/shell/Icon.jsx"
+import PageHead from "../components/shell/PageHead.jsx"
 
 
 function getCurrentUser() {
@@ -666,8 +669,7 @@ function stationMatches(
 function Timetable() {
 
   const {
-    selectedDatasetId,
-    selectedDataset
+    selectedDatasetId
   } = useDataset()
 
   const [
@@ -1211,398 +1213,137 @@ function Timetable() {
   // 表示
   // ======================================
 
-  if (loading) {
-
-    return (
-
-      <div
-        className="passenger-timetable-page"
-      >
-
-        <h1>
-          時刻表
-        </h1>
-
-        <p>
-          読み込み中...
-        </p>
-
-      </div>
-
-    )
-
-  }
-
-
-  if (error) {
-
-    return (
-
-      <div
-        className="passenger-timetable-page"
-      >
-
-        <h1>
-          時刻表
-        </h1>
-
-        <p>
-          {error}
-        </p>
-
-      </div>
-
-    )
-
-  }
-
-
-  return (
-
-    <div
-      className="passenger-timetable-page"
-    >
-
-      <div
-        className="passenger-timetable-header"
-      >
-
-        <DatasetSelector />
-
-        {selectedDataset && (
-          <p>{selectedDataset.fileName || selectedDataset.railwayName || selectedDataset.id}</p>
-        )}
-
-        <div>
-
-          <h1>
-            時刻表
-          </h1>
-
-          <p>
-            駅の発車時刻をご案内します。
-          </p>
-
-        </div>
-
-      </div>
-
-
-      <div
-        className="passenger-timetable-controls"
-      >
-
-        <label>
-
-          <span>
-            路線
-          </span>
-
-          <select
-            value={
-              selectedLine
-            }
-            onChange={
-              event =>
-                setSelectedLine(
-                  event.target.value
-                )
-            }
-          >
-
-            {
-              lines.map(
-                line => (
-
-                  <option
-                    key={
-                      line.id
-                    }
-                    value={
-                      line.id
-                    }
-                  >
-
-                    {
-                      line.name ||
-                      line.railwayName ||
-                      "路線"
-                    }
-
-                  </option>
-
-                )
-              )
-            }
-
-          </select>
-
-        </label>
-
-
-        <label>
-
-          <span>
-            駅
-          </span>
-
-          <select
-            value={
-              selectedStation
-            }
-            onChange={
-              event =>
-                setSelectedStation(
-                  event.target.value
-                )
-            }
-          >
-
-            {
-              stations.map(
-                station => (
-
-                  <option
-                    key={
-                      `${station.name}-${station.shortName}`
-                    }
-                    value={
-                      station.name
-                    }
-                  >
-
-                    {
-                      station.name
-                    }
-
-                  </option>
-
-                )
-              )
-            }
-
-          </select>
-
-        </label>
-
-
-        <div
-          className="passenger-direction-tabs"
-        >
-
-          <button
-            type="button"
-            className={
-              direction === "Kudari"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              setDirection(
-                "Kudari"
-              )
-            }
-          >
-
-            下り
-
-          </button>
-
-
-          <button
-            type="button"
-            className={
-              direction === "Nobori"
-                ? "active"
-                : ""
-            }
-            onClick={() =>
-              setDirection(
-                "Nobori"
-              )
-            }
-          >
-
-            上り
-
-          </button>
-
-        </div>
-
-      </div>
-
-
-      <div
-        className="passenger-timetable-title"
-      >
-
-        <div>
-
-          <strong>
-            {
-              selectedStation ||
-              "駅"
-            }
-          </strong>
-
-          <span>
-            駅
-          </span>
-
-        </div>
-
-
-        <div
-          className="passenger-timetable-direction"
-        >
-
-          {
-            direction ===
-            "Kudari"
-              ? "下り"
-              : "上り"
-          }
-
-        </div>
-
-      </div>
-
-
-      {
-        groupedRows.length === 0
-
-          ? (
-
-            <div
-              className="passenger-timetable-empty"
-            >
-
-              この駅の時刻表データがありません。
-
-            </div>
-
-          )
-
-          : (
-
-            <div
-              className="passenger-timetable-list"
-            >
-
-              {
-                groupedRows.map(
-                  (
-                    [
-                      hour,
-                      rows
-                    ]
-                  ) => (
-
-                    <section
-                      key={
-                        hour
-                      }
-                      className="passenger-hour-section"
-                    >
-
-                      <div
-                        className="passenger-hour"
-                      >
-
-                        {
-                          Number(
-                            hour
-                          )
-                        }
-
-                        <span>
-                          時
-                        </span>
-
-                      </div>
-
-
-                      <div
-                        className="passenger-hour-trains"
-                      >
-
-                        {
-                          rows.map(
-                            row => (
-
-                              <div
-                                key={
-                                  row.id
-                                }
-                                className="passenger-train-row"
-                              >
-
-                                <div
-                                  className="passenger-time"
-                                >
-
-                                  {
-                                    row.time
-                                  }
-
-                                </div>
-
-
-                                <div
-                                  className="passenger-type"
-                                  style={
-                                    row.typeColor
-                                      ? {
-                                          color:
-                                            row.typeColor,
-                                          backgroundColor:
-                                            "#ffffff"
-                                        }
-                                      : undefined
-                                  }
-                                >
-
-                                  {
-                                    row.type
-                                  }
-
-                                </div>
-
-
-                                <div
-                                  className="passenger-destination"
-                                >
-
-                                  {
-                                    row.destination
-                                  }
-
-                                </div>
-
-                              </div>
-
-                            )
-                          )
-                        }
-
-                      </div>
-
-                    </section>
-
-                  )
-                )
-              }
-
-            </div>
-
-          )
+  const typeLegend = (() => {
+    const seen = new Map()
+    timetableRows.forEach(row => {
+      if (row.type && !seen.has(row.type)) {
+        seen.set(row.type, row.typeColor || "")
       }
+    })
+    return [...seen.entries()]
+  })()
 
-    </div>
+  const currentHour = new Date().getHours()
 
+  const head = (
+    <PageHead
+      crumbs={["閲覧"]}
+      title={selectedStation ? `${selectedStation} 駅時刻表` : "駅時刻表"}
+      description={
+        loading || error
+          ? "駅の発車時刻をご案内します。"
+          : `${direction === "Kudari" ? "下り" : "上り"} · ${timetableRows.length}本（通過列車を除く）`
+      }
+      actions={
+        <>
+          <button type="button" className="ax-btn" onClick={() => window.print()}>
+            <Icon name="staff" size={16} />印刷
+          </button>
+          <Link className="ax-btn" to="/board">
+            <Icon name="board" size={16} />発車標
+          </Link>
+        </>
+      }
+    />
   )
 
-}
+  if (loading || error) {
+    return (
+      <div className="passenger-timetable-page">
+        {head}
+        <div className="ax-card ax-empty">{loading ? "読み込み中…" : error}</div>
+      </div>
+    )
+  }
 
+  return (
+    <div className="passenger-timetable-page">
+      {head}
+
+      <div className="ax-card" style={{ overflow: "hidden" }}>
+        <div className="ax-toolbar">
+          {lines.length > 1 && (
+            <select
+              className="ax-select"
+              value={selectedLine}
+              onChange={event => setSelectedLine(event.target.value)}
+              aria-label="路線"
+            >
+              {lines.map(line => (
+                <option key={line.id} value={line.id}>
+                  {line.name || line.railwayName || "路線"}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <select
+            className="ax-select"
+            value={selectedStation}
+            onChange={event => setSelectedStation(event.target.value)}
+            aria-label="駅"
+          >
+            {stations.map(station => (
+              <option key={`${station.name}-${station.shortName}`} value={station.name}>
+                {station.name}
+              </option>
+            ))}
+          </select>
+
+          <div className="ax-seg">
+            <button type="button" className={direction === "Kudari" ? "on" : ""} onClick={() => setDirection("Kudari")}>
+              下り
+            </button>
+            <button type="button" className={direction === "Nobori" ? "on" : ""} onClick={() => setDirection("Nobori")}>
+              上り
+            </button>
+          </div>
+
+          {typeLegend.length > 0 && (
+            <div className="ax-legend">
+              {typeLegend.map(([type, color]) => (
+                <span key={type}>
+                  <i style={{ background: color || "var(--ax-text-2)" }} />
+                  {type}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {groupedRows.length === 0 ? (
+          <div className="ax-empty">この駅の時刻表データがありません。</div>
+        ) : (
+          <div className="ax-tt">
+            {groupedRows.map(([hour, rows]) => {
+              const isNow = Number(hour) % 24 === currentHour
+              return (
+                <Fragment key={hour}>
+                  <div className={`ax-tt-h ${isNow ? "now" : ""}`}>{Number(hour)}</div>
+                  <div className={`ax-tt-m ${isNow ? "now" : ""}`}>
+                    {rows.map(row => (
+                      <span
+                        key={row.id}
+                        className="ax-tt-min"
+                        style={row.typeColor ? { "--c": row.typeColor } : undefined}
+                        title={`${row.time} ${row.type || ""} ${row.destination || ""}行`}
+                      >
+                        <b>{row.time.slice(-2)}</b>
+                        <small>
+                          <i>{String(row.type || "").slice(0, 1)}</i>
+                          {row.destination}
+                        </small>
+                      </span>
+                    ))}
+                  </div>
+                </Fragment>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default Timetable

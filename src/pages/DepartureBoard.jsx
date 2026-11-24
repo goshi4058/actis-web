@@ -3,7 +3,8 @@ import {onAuthStateChanged} from "firebase/auth"
 import {get,ref} from "firebase/database"
 import {auth,database} from "../firebase/config"
 import {useDataset} from "../context/DatasetContext"
-import DatasetSelector from "../components/dataset/DatasetSelector"
+import Icon from "../components/shell/Icon.jsx"
+import PageHead from "../components/shell/PageHead.jsx"
 import "./DepartureBoard.css"
 import { getWaitAndConnectionRelations } from "../utils/trainRelations"
 
@@ -269,25 +270,30 @@ export default function DepartureBoard(){
     ?[["Nobori","上り"],["Kudari","下り"]]
     :[[dir,dir==="Nobori"?"上り":"下り"]]
 
-  if(loading)return<><DatasetSelector/><h1>駅発車標</h1><p>読み込み中...</p></>
-  if(error)return<><DatasetSelector/><h1>駅発車標</h1><p>{error}</p></>
+  const head=<PageHead
+    crumbs={["閲覧"]}
+    title={station?`${station} 駅発車標`:"駅発車標"}
+    description="現在時刻（または仮想時刻）に合わせて自動で更新されます。"
+    actions={<button type="button" className="ax-btn" onClick={()=>document.querySelector(".departure-board")?.requestFullscreen?.()}><Icon name="board" size={16}/>全画面</button>}
+  />
+
+  if(loading||error)return<div className="departure-board-page">{head}<div className="ax-card ax-empty">{loading?"読み込み中…":error}</div></div>
 
   return<div className="departure-board-page">
-    <DatasetSelector/>
-    <div className="departure-controls">
-      <label>駅 <select value={station} onChange={e=>setStation(e.target.value)}>{stations.map(x=><option key={x}>{x}</option>)}</select></label>
-      <label>方面 <select value={dir} onChange={e=>setDir(e.target.value)}>
-        <option value="ALL">すべて</option>
-        <option value="Nobori">上り</option>
-        <option value="Kudari">下り</option>
-      </select></label>
-      <label>表示 <select value={led} onChange={e=>setLed(e.target.value)}>
-        <option value="full">フルカラー</option>
-        <option value="3color">3色LED</option>
-      </select></label>
-      <label><input type="checkbox" checked={cars} onChange={e=>setCars(e.target.checked)}/> 両数</label>
-      <label>仮想時刻 <input type="time" step="1" value={virtual} onChange={e=>setVirtual(e.target.value)}/></label>
-      <button onClick={()=>setVirtual("")}>解除</button>
+    {head}
+    <div className="ax-card ax-board-controls">
+      <div className="ax-toolbar">
+        <select className="ax-select" aria-label="駅" value={station} onChange={e=>setStation(e.target.value)}>{stations.map(x=><option key={x}>{x}</option>)}</select>
+        <div className="ax-seg" role="group" aria-label="方面">
+          {[["ALL","すべて"],["Kudari","下り"],["Nobori","上り"]].map(([v,l])=><button type="button" key={v} className={dir===v?"on":""} onClick={()=>setDir(v)}>{l}</button>)}
+        </div>
+        <div className="ax-seg" role="group" aria-label="表示">
+          {[["full","フルカラー"],["3color","3色LED"]].map(([v,l])=><button type="button" key={v} className={led===v?"on":""} onClick={()=>setLed(v)}>{l}</button>)}
+        </div>
+        <label><input type="checkbox" checked={cars} onChange={e=>setCars(e.target.checked)}/> 両数</label>
+        <label style={{marginLeft:"auto"}}>仮想時刻 <input type="time" step="1" value={virtual} onChange={e=>setVirtual(e.target.value)}/></label>
+        {virtual&&<button type="button" className="ax-btn sm" onClick={()=>setVirtual("")}>解除</button>}
+      </div>
     </div>
 
     <div className="departure-board">

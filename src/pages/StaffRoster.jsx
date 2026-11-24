@@ -3,7 +3,6 @@ import { get, ref } from "firebase/database"
 import { onAuthStateChanged } from "firebase/auth"
 import { useNavigate } from "react-router-dom"
 import { auth, database } from "../firebase/config"
-import DatasetSelector from "../components/dataset/DatasetSelector"
 import { useDataset } from "../context/DatasetContext"
 import "./StaffRoster.css"
 
@@ -113,7 +112,6 @@ function StaffRoster() {
 
   return (
     <div className="staff-roster-page">
-      <DatasetSelector />
 
       <header className="staff-roster-header">
         <div>

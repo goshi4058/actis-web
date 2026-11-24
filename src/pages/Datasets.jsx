@@ -22,7 +22,6 @@ import {
   useDataset
 } from "../context/DatasetContext"
 
-import DatasetSelector from "../components/dataset/DatasetSelector"
 
 
 function formatDate(value) {
@@ -601,7 +600,6 @@ function Datasets() {
       className="datasets-page"
     >
 
-      <DatasetSelector />
 
       <div
         className="datasets-header"

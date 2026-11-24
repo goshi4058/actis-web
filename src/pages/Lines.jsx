@@ -13,7 +13,6 @@ import {
   onAuthStateChanged
 } from "firebase/auth"
 
-import DatasetSelector from "../components/dataset/DatasetSelector"
 
 import {
   useDataset
@@ -337,7 +336,6 @@ function Lines() {
       className="lines-page"
     >
 
-      <DatasetSelector />
 
       <div
         className="lines-header"

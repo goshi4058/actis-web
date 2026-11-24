@@ -18,26 +18,20 @@ import Upload from './pages/upload.jsx'
 import SharedDataset from './pages/SharedDataset.jsx'
 import AuthGuard from './components/AuthGuard.jsx'
 import AdminGuard from './components/AdminGuard.jsx'
-import Header from './components/Header.jsx'
-import Sidebar from './components/Sidebar.jsx'
+import AppLayout from './components/shell/AppLayout.jsx'
 import { DatasetProvider } from './context/DatasetContext.jsx'
 import Privacy from './pages/Privacy.jsx'
 import CrewRouteGenerator from './pages/CrewRouteGenerator.jsx'
 import CouplingExperiment from './pages/CouplingExperiment.jsx'
 import Terms from './pages/Terms.jsx'
 import './App.css'
+import './styles/ui.css'
 
 function App() {
   return (
     <DatasetProvider>
       <BrowserRouter>
-        <div className="app-shell">
-          <Header />
-
-          <div className="layout">
-            <Sidebar />
-
-            <main className="content">
+        <AppLayout>
               <Routes>
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
@@ -177,9 +171,7 @@ function App() {
                   }
                 />
               </Routes>
-            </main>
-          </div>
-        </div>
+        </AppLayout>
       </BrowserRouter>
     </DatasetProvider>
   )

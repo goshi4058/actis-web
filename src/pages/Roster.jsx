@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react"
 import { get, push, ref, remove, set, update } from "firebase/database"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth, database } from "../firebase/config"
-import DatasetSelector from "../components/dataset/DatasetSelector"
 import { useDataset } from "../context/DatasetContext"
 import "./Roster.css"
 
@@ -342,7 +341,6 @@ function Roster() {
 
   return (
     <div className="roster-page">
-      <DatasetSelector />
 
       <header className="roster-header">
         <div>

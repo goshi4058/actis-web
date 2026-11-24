@@ -1,37 +1,48 @@
-import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
-import { onAuthStateChanged } from "firebase/auth"
-import { auth } from "../firebase/config"
-import { isAdminUser } from "../utils/admin"
+import { Link, NavLink } from "react-router-dom"
+import Icon from "./shell/Icon.jsx"
+import { visibleNavGroups } from "./shell/navConfig.js"
+import { useAuthUser } from "./shell/useAuthUser.js"
 
-function Sidebar() {
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, user => {
-      setIsAdmin(isAdminUser(user))
-    })
-  }, [])
+function Sidebar({ onNavigate }) {
+  const { isAdmin } = useAuthUser()
+  const groups = visibleNavGroups(isAdmin)
 
   return (
-    <aside className="sidebar">
-      <Link to="/">ホーム</Link>
-      <Link to="/timetable">時刻表</Link>
-      <Link to="/board">駅発車標</Link>
-      {isAdmin && <Link to="/diagram">ダイヤグラム（開発中）</Link>}
-      <Link to="/lines">路線一覧</Link>
-      <Link to="/trains">列車一覧</Link>
-      {isAdmin && <Link to="/admin">管理画面</Link>}
-      {isAdmin && <Link to="/staff">スタフ（開発中）</Link>}
-      {isAdmin && <Link to="/roster">行路組み立て（開発中）</Link>}
-      <Link to="/upload">データアップロード</Link>
+    <nav className="ax-nav" aria-label="メインナビゲーション">
+      {groups.map(group => (
+        <div className="ax-nav-group" key={group.label}>
+          <div className="ax-nav-label">{group.label}</div>
 
-      <div className="sidebar-footer">
-        <Link to="/privacy">プライバシーポリシー</Link>
-        <Link to="/terms">利用規約</Link>
+          {group.items.map(item => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.end}
+              onClick={onNavigate}
+              className={({ isActive }) => (isActive ? "active" : "")}
+              title={item.key ? `${item.label}（G → ${item.key.toUpperCase()}）` : item.label}
+            >
+              <Icon name={item.icon} />
+              <span>{item.label}</span>
+              {item.tag && (
+                <em className={`ax-nav-tag ${item.admin && group.admin ? "adm" : ""}`}>
+                  {item.tag}
+                </em>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      ))}
+
+      <div className="ax-nav-foot">
+        <a href="https://discord.gg/vda3nRvfQd" target="_blank" rel="noopener noreferrer">
+          公式Discord
+        </a>
+        <Link to="/privacy" onClick={onNavigate}>プライバシーポリシー</Link>
+        <Link to="/terms" onClick={onNavigate}>利用規約</Link>
         <span>© 2026 ACTIS / goshi4058</span>
       </div>
-    </aside>
+    </nav>
   )
 }
 

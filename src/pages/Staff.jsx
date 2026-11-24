@@ -24,7 +24,6 @@ import {
 } from "../firebase/config"
 
 import StaffCard from "../components/staff/StaffCard"
-import DatasetSelector from "../components/dataset/DatasetSelector"
 import { useDataset } from "../context/DatasetContext"
 import { getWaitAndConnectionRelations } from "../utils/trainRelations"
 
@@ -1203,7 +1202,6 @@ function Staff() {
 
     <div>
 
-      <DatasetSelector />
 
       <h1>
         スタフ表示

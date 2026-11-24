@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACTIS — Visual Test</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+/* =========================================================
+   ACTIS Visual Test
+   既存アプリとは独立したデザイン検証用ページ（モックデータ）
+========================================================= */
+:root{
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --bg:#f4f6f8; --surface:#ffffff; --surface-2:#f8fafb; --line:#e3e8ec; --line-strong:#cfd8de;
+  --text:#14202b; --text-2:#4d5c68; --text-3:#82909b;
+  --nav:#0f1720; --nav-2:#16212c; --nav-text:#aab8c3; --nav-line:#22303c;
+  --accent:#1f8a70; --accent-weak:#e5f4ef; --accent-text:#136650;
+  --blue:#2f6fd6; --amber:#d9930d; --red:#d23f3f;
+  --radius:10px; --radius-sm:7px;
+  --shadow:0 1px 2px rgba(16,24,32,.05),0 1px 1px rgba(16,24,32,.03);
+  --shadow-lg:0 18px 50px rgba(16,24,32,.22);
+  --header-h:56px; --nav-w:232px;
+}
+:root[data-theme="dark"]{
+  --bg:#0c1218; --surface:#131b23; --surface-2:#17212b; --line:#24313d; --line-strong:#33424f;
+  --text:#e7edf2; --text-2:#a4b2bd; --text-3:#6f7f8c;
+  --nav:#0a0f14; --nav-2:#131c25; --nav-line:#1d2833;
+  --accent:#2bb18f; --accent-weak:#123129; --accent-text:#5fd4b2;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit;text-decoration:none}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- Shell ---------- */
+.shell{display:grid;grid-template-columns:var(--nav-w) 1fr;grid-template-rows:var(--header-h) 1fr;min-height:100vh;transition:grid-template-columns .2s ease}
+.shell.collapsed{--nav-w:64px}
+
+.topbar{grid-column:1/-1;position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;padding:0 16px 0 0;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{width:var(--nav-w);height:100%;display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--nav);color:#fff;transition:width .2s ease;overflow:hidden;flex:none}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#25a283,#16705b);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.brand-text{white-space:nowrap}
+.brand-text b{font-size:16px;letter-spacing:.02em}
+.brand-text small{margin-left:6px;color:var(--nav-text);font-size:11px}
+.collapsed .brand-text{display:none}
+
+.icon-btn{width:36px;height:36px;display:grid;place-items:center;border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;color:var(--text-2)}
+.icon-btn:hover{background:var(--surface-2);border-color:var(--line)}
+
+.ds-switch{display:flex;align-items:center;gap:8px;height:36px;padding:0 10px 0 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);max-width:340px;position:relative}
+.ds-switch:hover{border-color:var(--line-strong)}
+.ds-switch .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+.ds-switch .lbl{font-size:11px;color:var(--text-3)}
+.ds-switch .name{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ds-menu{position:absolute;top:42px;left:0;width:340px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:6px;display:none;z-index:60}
+.ds-menu.open{display:block}
+.ds-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:var(--radius-sm);background:none;text-align:left}
+.ds-item:hover{background:var(--surface-2)}
+.ds-item small{display:block;color:var(--text-3);font-size:12px}
+.ds-item .check{margin-left:auto;color:var(--accent)}
+.ds-menu hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+
+.search-btn{flex:1;max-width:420px;display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);color:var(--text-3);text-align:left}
+.search-btn:hover{border-color:var(--line-strong)}
+kbd{font-family:var(--mono);font-size:11px;padding:1px 6px;border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:5px;background:var(--surface);color:var(--text-2)}
+.search-btn kbd{margin-left:auto}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.clock{font-family:var(--mono);font-size:13px;color:var(--text-2);padding:0 8px;border-right:1px solid var(--line);margin-right:4px}
+.avatar{width:32px;height:32px;border-radius:50%;background:#5865f2;color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+
+/* ---------- Sidebar ---------- */
+.nav{position:sticky;top:var(--header-h);height:calc(100vh - var(--header-h));background:var(--nav);color:var(--nav-text);padding:10px 10px 12px;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.nav-group{margin-top:12px}
+.nav-group:first-child{margin-top:2px}
+.nav-label{padding:0 10px 6px;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#64737f;text-transform:uppercase;white-space:nowrap}
+.nav a{display:flex;align-items:center;gap:11px;height:36px;padding:0 10px;border-radius:var(--radius-sm);font-size:13.5px;font-weight:550;white-space:nowrap;position:relative}
+.nav a:hover{background:var(--nav-2);color:#fff}
+.nav a.active{background:var(--nav-2);color:#fff}
+.nav a.active::before{content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.nav a .tag{margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:#2a3744;color:#9fb0bd}
+.nav a .tag.adm{background:#3b2a1a;color:#f0b25a}
+.nav-foot{margin-top:auto;padding:12px 10px 0;border-top:1px solid var(--nav-line);font-size:11.5px;color:#64737f;display:grid;gap:4px}
+.nav-foot a{height:auto;padding:0;font-size:11.5px;font-weight:400}
+.nav-foot a:hover{background:none;text-decoration:underline}
+.collapsed .nav-label,.collapsed .nav a span,.collapsed .nav a .tag,.collapsed .nav-foot{display:none}
+.collapsed .nav a{justify-content:center;padding:0}
+.collapsed .nav-group{margin-top:8px;padding-top:8px;border-top:1px solid var(--nav-line)}
+.collapsed .nav-group:first-child{border-top:0}
+
+/* ---------- Main ---------- */
+.main{min-width:0;padding:22px 28px 60px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.crumbs{font-size:12px;color:var(--text-3);margin-bottom:4px;display:flex;gap:6px;align-items:center}
+.page-head h1{margin:0;font-size:22px;letter-spacing:-.01em}
+.page-head p{margin:2px 0 0;color:var(--text-2);font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;border-radius:var(--radius-sm);border:1px solid var(--line-strong);background:var(--surface);font-weight:600;font-size:13px;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--text-2)}
+.btn.ghost:hover{background:var(--surface-2)}
+.btn.sm{height:28px;padding:0 9px;font-size:12px}
+.btn svg.i{width:16px;height:16px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.card-head h2{margin:0;font-size:14px}
+.card-head .sub{color:var(--text-3);font-size:12px}
+.card-body{padding:14px 16px}
+
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.kpi .k-top{display:flex;align-items:center;justify-content:space-between;color:var(--text-2);font-size:12.5px;font-weight:600}
+.kpi .k-ico{width:28px;height:28px;border-radius:7px;display:grid;place-items:center}
+.kpi .k-ico svg{width:16px;height:16px}
+.kpi strong{font-size:26px;line-height:1.1;font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi .k-sub{font-size:12px;color:var(--text-3)}
+.tone-green .k-ico{background:var(--accent-weak);color:var(--accent-text)}
+.tone-blue .k-ico{background:color-mix(in srgb,var(--blue) 13%,transparent);color:var(--blue)}
+.tone-amber .k-ico{background:color-mix(in srgb,var(--amber) 15%,transparent);color:var(--amber)}
+.tone-red .k-ico{background:color-mix(in srgb,var(--red) 13%,transparent);color:var(--red)}
+
+.two{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);margin-top:14px}
+.meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.meta div{padding:10px 12px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--line)}
+.meta span{display:block;font-size:11.5px;color:var(--text-3)}
+.meta b{font-size:13.5px;word-break:break-all}
+.quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.q{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);text-align:left}
+.q:hover{border-color:var(--accent);background:var(--accent-weak)}
+.q .qi{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--accent-text)}
+.q b{display:block;font-size:13.5px}
+.q small{color:var(--text-3);font-size:12px}
+.q kbd{margin-left:auto}
+
+.list{margin:0;padding:0;list-style:none}
+.list li{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.list .t{font-family:var(--mono);font-size:13px;width:44px;color:var(--text)}
+.list .muted{color:var(--text-3);font-size:12px;margin-left:auto}
+
+.type{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);color:var(--text-2);white-space:nowrap}
+.pill.ok{background:var(--accent-weak);border-color:transparent;color:var(--accent-text)}
+
+/* ---------- Toolbar ---------- */
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface)}
+.field{display:flex;align-items:center;gap:7px;height:32px;padding:0 10px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);min-width:220px}
+.field input{border:0;outline:0;background:transparent;width:100%}
+.field svg.i{width:15px;height:15px;color:var(--text-3)}
+.seg{display:inline-flex;padding:2px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--line)}
+.seg button{height:26px;padding:0 10px;border:0;border-radius:5px;background:transparent;font-size:12.5px;font-weight:600;color:var(--text-2)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+select.sel{height:32px;padding:0 28px 0 10px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2382909b' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center}
+.toolbar .count{margin-left:auto;color:var(--text-3);font-size:12px}
+
+/* ---------- Table ---------- */
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl.fixed{table-layout:fixed}
+.tbl th{position:sticky;top:var(--header-h);z-index:2;text-align:left;font-size:11.5px;font-weight:650;color:var(--text-3);background:var(--surface-2);padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr.row{cursor:pointer}
+.tbl tr.row:hover td{background:var(--surface-2)}
+.tbl tr.row.open td{background:var(--accent-weak)}
+.tbl .num{font-size:12.5px}
+.chev{transition:transform .15s;color:var(--text-3)}
+.open .chev{transform:rotate(90deg)}
+.chain{padding:12px 14px 16px 44px;background:var(--surface-2)}
+.chain-track{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding-bottom:4px}
+.leg{min-width:178px;padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+.leg .l1{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.leg .l1 b{font-family:var(--mono);font-size:13px}
+.leg .l2{font-size:12px;color:var(--text-2)}
+.leg .l3{font-family:var(--mono);font-size:12px;color:var(--text)}
+.leg a{color:var(--blue);font-size:11.5px;font-weight:600}
+.link{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:54px;color:var(--text-3);font-size:10.5px;font-family:var(--mono)}
+.link::before{content:"";width:100%;height:1px;background:var(--line-strong);margin-bottom:3px}
+.bar{position:relative;height:8px;border-radius:4px;background:var(--surface-2);border:1px solid var(--line)}
+.bar span{position:absolute;top:-1px;bottom:-1px;border-radius:4px;opacity:.85}
+
+/* ---------- Timetable ---------- */
+.tt{display:grid;grid-template-columns:52px 1fr;font-size:13px}
+.tt .h{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;background:var(--surface-2);border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.tt .m{display:flex;flex-wrap:wrap;gap:4px 14px;padding:7px 12px;border-bottom:1px solid var(--line);min-height:40px;align-items:center}
+.tt .now-row{background:color-mix(in srgb,var(--amber) 7%,transparent)}
+.min{display:inline-flex;align-items:baseline;gap:2px;font-family:var(--mono);font-size:15px;font-weight:700;padding:1px 3px;border-radius:4px;cursor:default}
+.min:hover{background:var(--surface-2)}
+.min sup{font-family:var(--font);font-size:10px;font-weight:600;color:var(--text-3);top:-.5em}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+/* ---------- Board ---------- */
+.board{background:#05080b;border-radius:12px;padding:14px;border:1px solid #1d262e;color:#fff}
+.board-top{display:flex;justify-content:space-between;align-items:center;padding:0 6px 10px;color:#9fb0bd;font-size:12px}
+.board-top b{color:#fff;font-size:15px}
+.brow{display:grid;grid-template-columns:86px 76px 1fr 64px 56px;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid #151d24;font-size:19px;font-weight:700;letter-spacing:.04em}
+.brow.head{font-size:11px;color:#6f808d;font-weight:600;letter-spacing:.05em;border-top:0;padding-top:0}
+.brow .bt{font-family:var(--mono);font-size:21px}
+.btype{display:inline-flex;justify-content:center;padding:2px 6px;border-radius:4px;font-size:15px}
+.led .brow{font-family:"MS Gothic","Osaka-Mono",var(--mono);color:#ffb000;text-shadow:0 0 6px rgba(255,140,0,.45)}
+.led .btype{background:none!important;padding:0}
+.led .c-red{color:#ff4d3d!important}.led .c-grn{color:#5aff6a!important}.led .c-org{color:#ffb000!important}
+.board-msg{margin-top:6px;padding:9px 12px;border-top:1px solid #151d24;color:#7fd7ff;font-size:13px;white-space:nowrap;overflow:hidden}
+.board-msg span{display:inline-block;padding-left:100%;animation:marq 22s linear infinite}
+@keyframes marq{to{transform:translateX(-100%)}}
+
+/* ---------- Palette ---------- */
+.overlay{position:fixed;inset:0;background:rgba(10,15,20,.45);backdrop-filter:blur(2px);display:none;align-items:flex-start;justify-content:center;padding-top:12vh;z-index:100}
+.overlay.open{display:flex}
+.palette{width:min(600px,92vw);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);overflow:hidden}
+.palette .pin{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.palette input{flex:1;border:0;outline:0;background:none;font-size:15px}
+.palette ul{list-style:none;margin:0;padding:6px;max-height:50vh;overflow:auto}
+.palette .grp{padding:8px 10px 4px;font-size:11px;color:var(--text-3);font-weight:650}
+.palette li.it{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-sm);cursor:pointer}
+.palette li.it.sel{background:var(--accent-weak);color:var(--accent-text)}
+.palette li.it small{margin-left:auto;color:var(--text-3);font-size:12px}
+.palette .pfoot{display:flex;gap:14px;padding:8px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--text-3);background:var(--surface-2)}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;background:#14202b;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;transition:.2s;z-index:120;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.vt-badge{position:fixed;right:14px;bottom:14px;z-index:90;background:#f5b841;color:#2a1c00;font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px;box-shadow:var(--shadow)}
+.empty{padding:40px;text-align:center;color:var(--text-3)}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
+@media (max-width:760px){
+  .shell,.shell.collapsed{grid-template-columns:1fr;--nav-w:64px}
+  .brand{width:auto}.brand-text{display:none}
+  .nav{position:fixed;left:0;top:var(--header-h);width:250px;z-index:50;transform:translateX(-100%);transition:transform .2s}
+  .shell.mnav .nav{transform:none;box-shadow:var(--shadow-lg)}
+  .shell .nav-label,.shell .nav a span,.shell .nav a .tag,.shell .nav-foot{display:revert}
+  .shell .nav a{justify-content:flex-start;padding:0 10px}
+  .main{padding:16px 14px 50px}
+  .search-btn span,.search-btn kbd,.clock,.ds-switch .lbl{display:none}
+  .search-btn{flex:0;max-width:none}
+  .meta,.quick{grid-template-columns:1fr}
+  .brow{grid-template-columns:62px 58px 1fr 44px;font-size:15px}.brow>:nth-child(5){display:none}
+}
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">AC</div>
+      <div class="brand-text"><b>ACTIS</b><small>v0.2 preview</small></div>
+    </div>
+    <button class="icon-btn" id="navToggle" title="サイドバーを折りたたむ  [ ]" aria-label="サイドバー切替"><svg class="i"><use href="#i-panel"/></svg></button>
+
+    <div class="ds-switch" id="dsSwitch" role="button" tabindex="0" aria-haspopup="listbox">
+      <span class="dot"></span>
+      <span class="lbl">ダイヤ</span>
+      <span class="name" id="dsName"></span>
+      <svg class="i" style="width:14px;height:14px;color:var(--text-3)"><use href="#i-chev-down"/></svg>
+      <div class="ds-menu" id="dsMenu"></div>
+    </div>
+
+    <button class="search-btn" id="openPalette"><svg class="i"><use href="#i-search"/></svg><span>列車番号・運用・駅・ページを検索</span><kbd>Ctrl K</kbd></button>
+
+    <div class="top-right">
+      <span class="clock" id="clock">--:--:--</span>
+      <button class="icon-btn" id="themeBtn" title="ダークモード切替"><svg class="i"><use href="#i-moon"/></svg></button>
+      <button class="icon-btn" title="通知"><svg class="i"><use href="#i-bell"/></svg></button>
+      <div class="avatar" title="goshi4058">G</div>
+    </div>
+  </header>
+
+  <nav class="nav" id="nav" aria-label="メインナビゲーション"></nav>
+  <main class="main" id="main"></main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="palette" role="dialog" aria-label="コマンドパレット">
+    <div class="pin"><svg class="i" style="color:var(--text-3)"><use href="#i-search"/></svg><input id="pInput" placeholder="ページ名、列車番号（例: 1203）、運用（例: A05）、駅名…" autocomplete="off"></div>
+    <ul id="pList"></ul>
+    <div class="pfoot"><span><kbd>↑</kbd><kbd>↓</kbd> 移動</span><span><kbd>Enter</kbd> 開く</span><span><kbd>Esc</kbd> 閉じる</span></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="vt-badge">VISUAL TEST · モックデータ</div>
+
+<!-- Icons -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M7 9h4M7 13h10M12 17v3M8 20h8"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></symbol>
+  <symbol id="i-train" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14M9 21l1.5-4M15 21l-1.5-4"/><circle cx="9" cy="14" r=".6"/><circle cx="15" cy="14" r=".6"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-6 3 4 5-8"/></symbol>
+  <symbol id="i-staff" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 19A1.5 1.5 0 0 0 5.8 21h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v16M6 14l6 6 6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V4M6 10l6-6 6 6"/></symbol>
+  <symbol id="i-station" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h6M15 12h6"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-discord" viewBox="0 0 24 24"><path d="M7 7c3-1.3 7-1.3 10 0l1.5 9c-1.6 1.3-3.3 2-5 2.3l-.8-1.6M7 7 5.5 16c1.6 1.3 3.3 2 5 2.3l.8-1.6"/><circle cx="9.5" cy="12.5" r=".8"/><circle cx="14.5" cy="12.5" r=".8"/></symbol>
+</svg>
+
+<script>
+/* =========================================================
+   モックデータ生成（架空路線）
+========================================================= */
+const STATIONS = ["中央","栄町","港南","西川","桜台","緑ヶ丘","東浜","北山"];
+const RUN = [0,3,6,10,13,17,21,26];
+const TYPES = {
+  "普通":{c:"#4b5563",abbr:"普",stops:[0,1,2,3,4,5,6,7],f:1,led:"c-grn"},
+  "快速":{c:"#e07b00",abbr:"快",stops:[0,2,3,5,7],f:.86,led:"c-org"},
+  "急行":{c:"#d23f3f",abbr:"急",stops:[0,3,5,7],f:.8,led:"c-red"},
+  "特急":{c:"#2f6fd6",abbr:"特",stops:[0,5,7],f:.74,led:"c-red"},
+};
+const PATTERN = ["普通","快速","普通","急行","普通","快速"];
+const pad = n=>String(n).padStart(2,"0");
+const hm = m=>{m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+":"+pad(m%60)};
+
+function buildTrains(){
+  const trains=[];let dn=1,up=2,k=0;
+  for(let t=5*60+20;t<=23*60+40;t+=12){
+    for(const dir of ["Kudari","Nobori"]){
+      let type=PATTERN[k%PATTERN.length];
+      if(t>=7*60&&t<=9*60&&k%9===4)type="特急";
+      const ty=TYPES[type];
+      const seq=dir==="Kudari"?[0,1,2,3,4,5,6,7]:[7,6,5,4,3,2,1,0];
+      const start=t+(dir==="Nobori"?5:0);
+      const times={};let base=null;
+      for(const s of seq){
+        const off=Math.abs(RUN[s]-RUN[seq[0]]);
+        const tm=Math.round(start+off*ty.f);
+        times[s]=ty.stops.includes(s)?tm:null;
+      }
+      const no=dir==="Kudari"?(1000+dn++*2-1):(1000+up++*2-2);
+      trains.push({id:"T"+no,no:String(no),type,dir,times,from:seq[0],to:seq[7],dep:times[seq[0]],arr:times[seq[7]],cars:type==="特急"?8:(type==="普通"?4:6)});
+    }
+    k++;
+  }
+  return trains.sort((a,b)=>a.dep-b.dep);
+}
+function buildOps(trains){
+  const ops=[];const pool={0:[],7:[]};
+  for(const tr of trains){
+    const p=pool[tr.from];p.sort((a,b)=>a.ready-b.ready);
+    let op=null;const i=p.findIndex(o=>o.ready<=tr.dep&&o.cars===tr.cars);
+    if(i>=0){op=p.splice(i,1)[0];}
+    else{op={name:"",cars:tr.cars,trains:[]};ops.push(op);}
+    op.trains.push(tr);op.ready=tr.arr+6;pool[tr.to].push(op);
+  }
+  ops.forEach((o,i)=>{o.name=(o.cars===8?"S":o.cars===6?"B":"A")+pad(i+1);o.trains.forEach(t=>t.op=o.name)});
+  return ops;
+}
+const DATASETS=[
+  {id:"ds_main",name:"ACTIS本線 2026年改正",file:"actis_honsen_2026.oud2",rail:"ACTIS本線",updated:"2026-11-20 21:14",share:true},
+  {id:"ds_holiday",name:"ACTIS本線 土休日",file:"actis_holiday.oud2",rail:"ACTIS本線",updated:"2026-11-12 18:02",share:false},
+  {id:"ds_branch",name:"港南支線（試作）",file:"konan_branch.oud2",rail:"港南支線",updated:"2026-10-30 09:41",share:false},
+];
+const TRAINS=buildTrains();const OPS=buildOps(TRAINS);
+
+/* =========================================================
+   状態
+========================================================= */
+const state={ds:DATASETS[0].id,dir:"all",q:"",type:"all",station:0,ttDir:"Kudari",led:false,openOp:null};
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
+const vNow=()=>{const n=nowMin();return n<5*60+20?8*60+12:n}; // 深夜はデモ用に朝ラッシュへ
+
+/* =========================================================
+   ナビゲーション
+========================================================= */
+const NAV=[
+  {g:"概要",items:[{p:"home",l:"ダッシュボード",i:"home",k:"G H"}]},
+  {g:"閲覧",items:[
+    {p:"timetable",l:"駅時刻表",i:"clock",k:"G T"},
+    {p:"board",l:"駅発車標",i:"board",k:"G B"},
+    {p:"trains",l:"運用一覧",i:"train",k:"G O"},
+    {p:"lines",l:"路線一覧",i:"route"},
+    {p:"diagram",l:"ダイヤグラム",i:"chart",tag:"開発中"},
+  ]},
+  {g:"乗務",items:[
+    {p:"staff",l:"スタフ",i:"staff",tag:"β"},
+    {p:"roster",l:"行路組み立て",i:"users",tag:"β"},
+  ]},
+  {g:"データ",items:[
+    {p:"datasets",l:"ダイヤ管理",i:"db",k:"G D"},
+    {p:"upload",l:"OUD2アップロード",i:"upload",k:"G U"},
+  ]},
+  {g:"管理",items:[
+    {p:"admin",l:"管理センター",i:"shield",tag:"管理",adm:1},
+    {p:"lab",l:"実験機能",i:"flask",tag:"管理",adm:1},
+  ]},
+];
+const ico=(n,s="")=>{const m=s.match(/class="([^"]*)"/);const cls=m?m[1]:"i";return `<svg class="${cls.includes("i")?cls:"i "+cls}" ${s.replace(/class="[^"]*"/,"")}><use href="#i-${n}"/></svg>`};
+function renderNav(){
+  const cur=route();
+  document.getElementById("nav").innerHTML=NAV.map(g=>`
+    <div class="nav-group"><div class="nav-label">${g.g}</div>
+    ${g.items.map(it=>`<a href="#/${it.p}" class="${cur===it.p?"active":""}" title="${it.l}${it.k?"  ("+it.k+")":""}">${ico(it.i)}<span>${it.l}</span>${it.tag?`<em class="tag ${it.adm?"adm":""}">${it.tag}</em>`:""}</a>`).join("")}
+    </div>`).join("")+`
+    <div class="nav-foot"><a href="https://discord.gg/vda3nRvfQd" target="_blank" rel="noopener">公式Discord</a><a href="#/privacy">プライバシーポリシー</a><a href="#/terms">利用規約</a><span>© 2026 ACTIS / goshi4058</span></div>`;
+}
+
+/* =========================================================
+   データセット切替（全ページ共通・ヘッダー常駐）
+========================================================= */
+function renderDs(){
+  const cur=DATASETS.find(d=>d.id===state.ds);
+  document.getElementById("dsName").textContent=cur.name;
+  document.getElementById("dsMenu").innerHTML=DATASETS.map(d=>`
+    <button class="ds-item" data-ds="${d.id}">${ico("db",'style="color:var(--text-3)"')}<div><b>${d.name}</b><small>${d.file} · ${d.updated}</small></div>${d.id===state.ds?`<span class="check">${ico("chev-right")}</span>`:""}</button>`).join("")+
+    `<hr><button class="ds-item" data-go="upload">${ico("plus",'style="color:var(--accent)"')}<div><b>OUD2を追加</b><small>新しいダイヤを読み込む</small></div></button>
+    <button class="ds-item" data-go="datasets">${ico("db",'style="color:var(--text-3)"')}<div><b>ダイヤ管理を開く</b></div></button>`;
+}
+const dsSwitch=document.getElementById("dsSwitch"),dsMenu=document.getElementById("dsMenu");
+dsSwitch.addEventListener("click",e=>{
+  const b=e.target.closest(".ds-item");
+  if(b){if(b.dataset.ds){state.ds=b.dataset.ds;renderDs();toast("ダイヤを「"+DATASETS.find(d=>d.id===state.ds).name+"」に切り替えました");render();}
+        if(b.dataset.go)location.hash="#/"+b.dataset.go;dsMenu.classList.remove("open");return;}
+  dsMenu.classList.toggle("open");
+});
+document.addEventListener("click",e=>{if(!dsSwitch.contains(e.target))dsMenu.classList.remove("open")});
+
+/* =========================================================
+   ページ
+========================================================= */
+const typeBadge=t=>`<span class="type" style="background:${TYPES[t].c}">${t}</span>`;
+const head=(crumb,title,desc,actions="")=>`
+  <div class="page-head"><div><div class="crumbs">${crumb}</div><h1>${title}</h1>${desc?`<p>${desc}</p>`:""}</div><div class="actions">${actions}</div></div>`;
+
+function nextDepartures(st,dir,from,n){
+  return TRAINS.filter(t=>(dir==="all"||t.dir===dir)&&t.times[st]!=null&&t.times[st]>=from&&t.to!==st).sort((a,b)=>a.times[st]-b.times[st]).slice(0,n);
+}
+
+const PAGES={
+home(){
+  const ds=DATASETS.find(d=>d.id===state.ds);
+  const kd=TRAINS.filter(t=>t.dir==="Kudari").length,nb=TRAINS.length-kd;
+  const now=vNow();
+  const nx=nextDepartures(0,"Kudari",now,6);
+  const kpi=(tone,icon,label,val,sub)=>`<div class="card kpi tone-${tone}"><div class="k-top">${label}<span class="k-ico">${ico(icon)}</span></div><strong>${val}</strong><div class="k-sub">${sub}</div></div>`;
+  return head("ACTIS","運行管理ダッシュボード","選択中のダイヤを基準に、全ページの表示が切り替わります。",
+    `<button class="btn" onclick="location.hash='#/datasets'">${ico("db")}ダイヤ管理</button><button class="btn primary" onclick="location.hash='#/upload'">${ico("upload")}OUD2を追加</button>`)+`
+  <section class="grid kpis">
+    ${kpi("green","db","登録ダイヤ",DATASETS.length,"共有中 "+DATASETS.filter(d=>d.share).length+" 件")}
+    ${kpi("blue","train","運用数",OPS.length,"最大両数 8両")}
+    ${kpi("amber","down","下り列車",kd,"始発 "+hm(TRAINS.find(t=>t.dir==="Kudari").dep))}
+    ${kpi("red","up","上り列車",nb,"始発 "+hm(TRAINS.find(t=>t.dir==="Nobori").dep))}
+  </section>
+  <section class="grid two">
+    <div class="card">
+      <div class="card-head"><div><h2>${ds.name}</h2><span class="sub">選択中のダイヤ</span></div>${ds.share?`<span class="pill ok">${ico("share",'style="width:12px;height:12px"')}共有中</span>`:`<span class="pill">非公開</span>`}</div>
+      <div class="card-body">
+        <div class="meta"><div><span>路線</span><b>${ds.rail}</b></div><div><span>駅数</span><b>${STATIONS.length} 駅</b></div><div><span>最終更新</span><b class="num">${ds.updated}</b></div></div>
+        <div class="quick">
+          ${[["timetable","clock","駅時刻表","駅ごとの発車時刻","G T"],["board","board","駅発車標","LED／フルカラー表示","G B"],["trains","train","運用一覧","運用と列車のつながり","G O"],["staff","staff","スタフ","秒単位の乗務用時刻","G S"]]
+            .map(([p,i,l,d,k])=>`<button class="q" onclick="location.hash='#/${p}'"><span class="qi">${ico(i)}</span><span><b>${l}</b><small>${d}</small></span><kbd>${k}</kbd></button>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h2>${STATIONS[0]} 駅 — 次の下り</h2><span class="sub num">基準 ${hm(now)}</span></div><a class="btn ghost sm" href="#/board">発車標 ${ico("chev-right")}</a></div>
+      <ul class="list">${nx.map(t=>`<li><span class="t">${hm(t.times[0])}</span>${typeBadge(t.type)}<span>${STATIONS[t.to]} 行</span><span class="muted num">${t.no} · ${t.op}</span></li>`).join("")}</ul>
+    </div>
+  </section>`;
+},
+
+trains(){
+  const q=state.q.trim().toLowerCase();
+  const list=OPS.filter(o=>{
+    if(state.type!=="all"&&!o.trains.some(t=>t.type===state.type))return false;
+    if(!q)return true;
+    return o.name.toLowerCase().includes(q)||o.trains.some(t=>t.no.includes(q)||STATIONS[t.to].includes(q));
+  });
+  const DAY0=5*60,DAY1=25*60,span=DAY1-DAY0;
+  const rows=list.map(o=>{
+    const f=o.trains[0],l=o.trains[o.trains.length-1];
+    const bars=o.trains.map(t=>`<span style="left:${(t.dep-DAY0)/span*100}%;width:${Math.max(.6,(t.arr-t.dep)/span*100)}%;background:${TYPES[t.type].c}" title="${t.no} ${hm(t.dep)}-${hm(t.arr)}"></span>`).join("");
+    const open=state.openOp===o.name;
+    return `<tr class="row ${open?"open":""}" data-op="${o.name}">
+      <td>${ico("chev-right",'class="i chev"')}</td>
+      <td><b class="num">${o.name}</b></td>
+      <td><span class="pill">${o.cars}両</span></td>
+      <td class="num">${o.trains.length}本</td>
+      <td><span class="num">${hm(f.dep)}</span> <span style="color:var(--text-3)">${STATIONS[f.from]}</span></td>
+      <td><span class="num">${hm(l.arr)}</span> <span style="color:var(--text-3)">${STATIONS[l.to]}</span></td>
+      <td><div class="bar">${bars}</div></td>
+    </tr>${open?`<tr><td colspan="7" style="padding:0"><div class="chain"><div class="chain-track">${o.trains.map((t,i)=>`
+      ${i?`<div class="link">${t.dep-o.trains[i-1].arr}分<span>折返</span></div>`:""}
+      <div class="leg"><div class="l1"><b>${t.no}</b>${typeBadge(t.type)}<span class="pill" style="height:18px;font-size:10.5px">${t.dir==="Kudari"?"下り":"上り"}</span></div>
+      <div class="l2">${STATIONS[t.from]} → ${STATIONS[t.to]}</div><div class="l3">${hm(t.dep)} – ${hm(t.arr)}</div>
+      <a href="#/staff" onclick="event.stopPropagation()">スタフを開く →</a></div>`).join("")}</div></div></td></tr>`:""}`;
+  }).join("");
+  return head(`<a href="#/home">ACTIS</a> ${ico("chev-right",'style="width:12px;height:12px"')} 閲覧`,"運用一覧","運用ごとの列車チェーンを一覧。行をクリックで展開、<kbd>/</kbd> で検索。",
+    `<button class="btn">${ico("print")}印刷</button>`)+`
+  <div class="card" style="overflow:hidden">
+    <div class="toolbar">
+      <label class="field">${ico("search")}<input id="opSearch" value="${state.q}" placeholder="運用名・列車番号・行先で絞り込み"></label>
+      <div class="seg" id="typeSeg">${["all",...Object.keys(TYPES)].map(t=>`<button data-t="${t}" class="${state.type===t?"on":""}">${t==="all"?"すべて":t}</button>`).join("")}</div>
+      <span class="count num">${list.length} / ${OPS.length} 運用</span>
+    </div>
+    ${list.length?`<table class="tbl fixed"><colgroup><col style="width:40px"><col style="width:90px"><col style="width:80px"><col style="width:70px"><col style="width:130px"><col style="width:130px"><col></colgroup><thead><tr><th></th><th>運用</th><th>両数</th><th>列車</th><th>出区</th><th>入区</th><th>稼働 (5:00 – 25:00)</th></tr></thead><tbody>${rows}</tbody></table>`:`<div class="empty">該当する運用がありません</div>`}
+  </div>`;
+},
+
+timetable(){
+  const st=state.station,dir=state.ttDir;
+  const list=TRAINS.filter(t=>t.dir===dir&&t.times[st]!=null&&t.to!==st);
+  const byH={};list.forEach(t=>{const h=Math.floor(t.times[st]/60);(byH[h]=byH[h]||[]).push(t)});
+  const nh=Math.floor(vNow()/60);
+  let rows="";for(let h=5;h<=24;h++){const ts=(byH[h]||[]).sort((a,b)=>a.times[st]-b.times[st]);
+    rows+=`<div class="h ${h===nh?"now-row":""}">${h}</div><div class="m ${h===nh?"now-row":""}">${ts.map(t=>`<span class="min" style="color:${TYPES[t.type].c}" title="${t.type} ${t.no} ${STATIONS[t.to]}行">${pad(t.times[st]%60)}<sup>${STATIONS[t.to].slice(0,1)}</sup></span>`).join("")||`<span style="color:var(--text-3)">—</span>`}</div>`;}
+  const term=dir==="Kudari"?STATIONS[7]:STATIONS[0];
+  return head(`<a href="#/home">ACTIS</a> ${ico("chev-right",'style="width:12px;height:12px"')} 閲覧`,`${STATIONS[st]} 駅時刻表`,`${term} 方面 · ${list.length}本（通過列車を除く）`,
+    `<button class="btn">${ico("print")}印刷</button><button class="btn" onclick="location.hash='#/board'">${ico("board")}この駅の発車標</button>`)+`
+  <div class="card" style="overflow:hidden">
+    <div class="toolbar">
+      <select class="sel" id="stSel">${STATIONS.map((s,i)=>`<option value="${i}" ${i===st?"selected":""}>${s}</option>`).join("")}</select>
+      <div class="seg" id="dirSeg"><button data-d="Kudari" class="${dir==="Kudari"?"on":""}">下り（${STATIONS[7]}方面）</button><button data-d="Nobori" class="${dir==="Nobori"?"on":""}">上り（${STATIONS[0]}方面）</button></div>
+      <div class="legend" style="margin-left:auto">${Object.entries(TYPES).map(([k,v])=>`<span><i style="background:${v.c}"></i>${k}</span>`).join("")}<span style="color:var(--text-3)">上付き＝行先</span></div>
+    </div>
+    <div class="tt">${rows}</div>
+  </div>`;
+},
+
+board(){
+  const st=state.station,now=vNow();
+  const part=(dir)=>{const ts=nextDepartures(st,dir,now,4);
+    return ts.map((t,i)=>`<div class="brow"><span class="btype ${TYPES[t.type].led}" style="background:${TYPES[t.type].c}">${t.type}</span><span class="bt">${hm(t.times[st])}</span><span>${STATIONS[t.to]}</span><span class="c-org">${t.cars}両</span><span style="font-size:14px;color:#9fb0bd">${dir==="Kudari"?1:2}番線</span></div>`).join("")||`<div class="brow"><span style="grid-column:1/-1;color:#6f808d;font-size:15px;text-align:center;padding:18px 0">${(dir==="Kudari"&&st===7)||(dir==="Nobori"&&st===0)?"当駅が終点のため、この方面の列車はありません":"本日の運転は終了しました"}</span></div>`;};
+  const nxt=nextDepartures(st,"Kudari",now,1)[0];
+  const stops=nxt?TYPES[nxt.type].stops.filter(s=>s>st).map(s=>STATIONS[s]).join("・"):"";
+  return head(`<a href="#/home">ACTIS</a> ${ico("chev-right",'style="width:12px;height:12px"')} 閲覧`,"駅発車標","仮想時刻に合わせて自動更新されます。",
+    `<button class="btn" id="fsBtn">${ico("expand")}全画面</button>`)+`
+  <div class="card" style="margin-bottom:14px"><div class="toolbar" style="border:0">
+    <select class="sel" id="stSel">${STATIONS.map((s,i)=>`<option value="${i}" ${i===st?"selected":""}>${s}</option>`).join("")}</select>
+    <div class="seg" id="ledSeg"><button data-l="0" class="${!state.led?"on":""}">フルカラー</button><button data-l="1" class="${state.led?"on":""}">3色LED</button></div>
+    <span class="count num">仮想時刻 ${hm(now)}</span>
+  </div></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr))" id="boards">
+    ${["Kudari","Nobori"].map(d=>`<div class="board ${state.led?"led":""}">
+      <div class="board-top"><b>${d==="Kudari"?STATIONS[7]+" 方面":STATIONS[0]+" 方面"}</b><span>${STATIONS[st]} · ${d==="Kudari"?"下り":"上り"}</span></div>
+      <div class="brow head"><span>種別</span><span>時刻</span><span>行先</span><span>両数</span><span>のりば</span></div>
+      ${part(d)}
+      ${d==="Kudari"&&stops?`<div class="board-msg"><span>先発の ${nxt.type} ${STATIONS[nxt.to]}行 は ${stops} に停まります。</span></div>`:""}
+    </div>`).join("")}
+  </div>`;
+},
+
+datasets(){
+  return head(`<a href="#/home">ACTIS</a> ${ico("chev-right",'style="width:12px;height:12px"')} データ`,"ダイヤ管理","選択・名前変更・削除・共有URLの発行をここで行います。",
+    `<button class="btn primary" onclick="location.hash='#/upload'">${ico("upload")}OUD2を追加</button>`)+`
+  <div class="card" style="overflow:hidden"><table class="tbl"><thead><tr><th>名前</th><th>ファイル</th><th>路線</th><th>更新</th><th>共有</th><th style="text-align:right">操作</th></tr></thead><tbody>
+  ${DATASETS.map(d=>`<tr><td><b>${d.name}</b>${d.id===state.ds?` <span class="pill ok">選択中</span>`:""}</td><td class="num" style="color:var(--text-2)">${d.file}</td><td>${d.rail}</td><td class="num">${d.updated}</td>
+  <td>${d.share?`<span class="pill ok">共有中</span>`:`<span class="pill">非公開</span>`}</td>
+  <td style="text-align:right;white-space:nowrap">${d.id!==state.ds?`<button class="btn sm" data-sel="${d.id}">選択</button> `:""}<button class="btn sm ghost" data-copy="${d.id}">${ico("share")}共有URL</button> <button class="btn sm ghost">名前変更</button> <button class="btn sm ghost" style="color:var(--red)">削除</button></td></tr>`).join("")}
+  </tbody></table></div>`;
+},
+
+upload(){
+  return head(`<a href="#/home">ACTIS</a> ${ico("chev-right",'style="width:12px;height:12px"')} データ`,"OUD2アップロード","OuDia2 形式のファイルから路線・駅・列車・運用を読み込みます。")+`
+  <div class="card"><div class="card-body" style="padding:40px;text-align:center;border:2px dashed var(--line-strong);border-radius:var(--radius);margin:16px">
+    <div style="width:52px;height:52px;margin:0 auto 12px;border-radius:12px;background:var(--accent-weak);color:var(--accent-text);display:grid;place-items:center">${ico("upload",'style="width:26px;height:26px"')}</div>
+    <b style="font-size:15px">ここに .oud2 ファイルをドロップ</b><p style="color:var(--text-3);margin:4px 0 14px">またはクリックしてファイルを選択（複数可）</p>
+    <button class="btn primary">ファイルを選択</button></div></div>`;
+},
+};
+function placeholder(p){
+  const item=NAV.flatMap(g=>g.items).find(i=>i.p===p);
+  return head(`<a href="#/home">ACTIS</a>`,item?item.l:p,"このビジュアルテストでは未作成のページです。")+`<div class="card empty">${ico(item?item.i:"flask",'style="width:32px;height:32px"')}<p>レイアウトは他ページと共通です。</p></div>`;
+}
+
+/* =========================================================
+   ルーティング / 描画
+========================================================= */
+const route=()=>(location.hash.replace(/^#\/?/,"")||"home").split("?")[0];
+function render(){
+  const p=route();
+  document.getElementById("main").innerHTML=(PAGES[p]||(()=>placeholder(p)))();
+  renderNav();bind();
+  document.getElementById("shell").classList.remove("mnav");
+}
+function bind(){
+  const $=id=>document.getElementById(id);
+  const s=$("opSearch");if(s){s.addEventListener("input",e=>{state.q=e.target.value;const pos=e.target.selectionStart;render();const n=$("opSearch");n.focus();n.setSelectionRange(pos,pos)});}
+  $("typeSeg")?.addEventListener("click",e=>{const b=e.target.closest("button");if(b){state.type=b.dataset.t;render()}});
+  $("dirSeg")?.addEventListener("click",e=>{const b=e.target.closest("button");if(b){state.ttDir=b.dataset.d;render()}});
+  $("ledSeg")?.addEventListener("click",e=>{const b=e.target.closest("button");if(b){state.led=b.dataset.l==="1";render()}});
+  $("stSel")?.addEventListener("change",e=>{state.station=+e.target.value;render()});
+  $("fsBtn")?.addEventListener("click",()=>$("boards").requestFullscreen?.());
+  document.querySelectorAll("tr.row[data-op]").forEach(r=>r.addEventListener("click",()=>{state.openOp=state.openOp===r.dataset.op?null:r.dataset.op;render()}));
+  document.querySelectorAll("[data-sel]").forEach(b=>b.addEventListener("click",()=>{state.ds=b.dataset.sel;renderDs();render();toast("選択中のダイヤを切り替えました")}));
+  document.querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",()=>toast("共有URLをコピーしました（デモ）")));
+}
+window.addEventListener("hashchange",render);
+
+/* =========================================================
+   コマンドパレット (Ctrl/⌘+K)
+========================================================= */
+const overlay=document.getElementById("overlay"),pInput=document.getElementById("pInput"),pList=document.getElementById("pList");
+let pItems=[],pSel=0;
+function openPalette(){overlay.classList.add("open");pInput.value="";buildPalette();pInput.focus()}
+function closePalette(){overlay.classList.remove("open")}
+function buildPalette(){
+  const q=pInput.value.trim().toLowerCase();
+  const pages=NAV.flatMap(g=>g.items).filter(i=>!q||i.l.toLowerCase().includes(q)||i.p.includes(q)).map(i=>({grp:"ページ",icon:i.i,label:i.l,hint:i.k||"",go:()=>location.hash="#/"+i.p}));
+  let trains=[],ops=[],sts=[];
+  if(q){
+    trains=TRAINS.filter(t=>t.no.includes(q)).slice(0,5).map(t=>({grp:"列車",icon:"train",label:`${t.no}  ${t.type} ${STATIONS[t.to]}行`,hint:`${hm(t.dep)} · ${t.op}`,go:()=>{state.q=t.op;state.openOp=t.op;state.type="all";location.hash="#/trains";render()}}));
+    ops=OPS.filter(o=>o.name.toLowerCase().includes(q)).slice(0,4).map(o=>({grp:"運用",icon:"route",label:o.name,hint:`${o.trains.length}本 · ${o.cars}両`,go:()=>{state.q=o.name;state.openOp=o.name;state.type="all";location.hash="#/trains";render()}}));
+    sts=STATIONS.map((s,i)=>[s,i]).filter(([s])=>s.includes(q)).map(([s,i])=>({grp:"駅",icon:"station",label:s+" 駅",hint:"時刻表を開く",go:()=>{state.station=i;location.hash="#/timetable";render()}}));
+  }
+  const acts=[{grp:"操作",icon:"moon",label:"ダークモード切替",hint:"",go:toggleTheme},{grp:"操作",icon:"panel",label:"サイドバー折りたたみ",hint:"[",go:toggleNav}].filter(a=>!q||a.label.includes(q));
+  pItems=[...trains,...ops,...sts,...pages,...acts];pSel=0;drawPalette();
+}
+function drawPalette(){
+  let g="";pList.innerHTML=pItems.map((it,i)=>{const h=it.grp!==g?`<li class="grp">${(g=it.grp)}</li>`:"";
+    return h+`<li class="it ${i===pSel?"sel":""}" data-i="${i}">${ico(it.icon)}<span>${it.label}</span><small class="num">${it.hint}</small></li>`}).join("")||`<li class="grp" style="padding:20px;text-align:center">見つかりませんでした</li>`;
+  pList.querySelector(".sel")?.scrollIntoView({block:"nearest"});
+}
+pInput.addEventListener("input",buildPalette);
+pInput.addEventListener("keydown",e=>{
+  if(e.key==="ArrowDown"){pSel=Math.min(pSel+1,pItems.length-1);drawPalette();e.preventDefault()}
+  else if(e.key==="ArrowUp"){pSel=Math.max(pSel-1,0);drawPalette();e.preventDefault()}
+  else if(e.key==="Enter"&&pItems[pSel]){closePalette();pItems[pSel].go()}
+});
+pList.addEventListener("click",e=>{const li=e.target.closest(".it");if(li){closePalette();pItems[+li.dataset.i].go()}});
+overlay.addEventListener("click",e=>{if(e.target===overlay)closePalette()});
+document.getElementById("openPalette").addEventListener("click",openPalette);
+
+/* =========================================================
+   キーボードショートカット
+========================================================= */
+let gPending=0;
+const G_MAP={h:"home",t:"timetable",b:"board",o:"trains",d:"datasets",u:"upload",s:"staff"};
+document.addEventListener("keydown",e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();overlay.classList.contains("open")?closePalette():openPalette();return}
+  if(e.key==="Escape"){closePalette();dsMenu.classList.remove("open");return}
+  if(/input|select|textarea/i.test(e.target.tagName))return;
+  if(e.key==="/"){const s=document.getElementById("opSearch");if(s){e.preventDefault();s.focus()}else{e.preventDefault();openPalette()}return}
+  if(e.key==="["){toggleNav();return}
+  if(e.key.toLowerCase()==="g"){gPending=Date.now();return}
+  if(gPending&&Date.now()-gPending<900&&G_MAP[e.key.toLowerCase()]){location.hash="#/"+G_MAP[e.key.toLowerCase()];gPending=0}
+});
+
+/* ---------- misc ---------- */
+function toggleNav(){const s=document.getElementById("shell");if(innerWidth<=760)s.classList.toggle("mnav");else s.classList.toggle("collapsed")}
+function toggleTheme(){const r=document.documentElement;r.dataset.theme=r.dataset.theme==="dark"?"":"dark"}
+document.getElementById("navToggle").addEventListener("click",toggleNav);
+document.getElementById("themeBtn").addEventListener("click",toggleTheme);
+let tt;function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),1800)}
+const tick=()=>{document.getElementById("clock").textContent=new Date().toLocaleTimeString("ja-JP",{hour12:false})};tick();setInterval(tick,1000);
+let lastMin=nowMin();setInterval(()=>{if(nowMin()!==lastMin){lastMin=nowMin();if(route()==="board"||route()==="home")render()}},5000);
+
+renderDs();render();
+</script>
+</body>
+</html>

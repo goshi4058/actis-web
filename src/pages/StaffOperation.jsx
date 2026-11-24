@@ -5,7 +5,6 @@ import { onAuthStateChanged } from "firebase/auth"
 import { Link, useParams } from "react-router-dom"
 import { auth, database } from "../firebase/config"
 import StaffCard from "../components/staff/StaffCard"
-import DatasetSelector from "../components/dataset/DatasetSelector"
 import { useDataset } from "../context/DatasetContext"
 
 function getCurrentUser() {
@@ -260,7 +259,6 @@ function StaffOperation() {
 
   return (
     <div className="staff-operation-page">
-      <DatasetSelector />
       <div className="staff-operation-header">
         <div>
           <div className="staff-operation-kicker">運用スタフ</div>

@@ -3,7 +3,6 @@ import { onAuthStateChanged } from "firebase/auth"
 import { get, ref } from "firebase/database"
 import { auth, database } from "../firebase/config"
 import { useDataset } from "../context/DatasetContext"
-import DatasetSelector from "../components/dataset/DatasetSelector"
 import AdminGuard from "../components/AdminGuard"
 import "./CrewRouteGenerator.css"
 
@@ -995,7 +994,6 @@ function CrewRouteGeneratorPage() {
 
   return (
     <div className="crew-route-page">
-      <DatasetSelector />
 
       <header className="crew-route-header">
         <div>
