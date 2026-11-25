@@ -4,7 +4,7 @@ import UserMenu from "./usermenu.jsx"
 import Icon from "./shell/Icon.jsx"
 import DatasetSwitch from "./shell/DatasetSwitch.jsx"
 
-const APP_VERSION = "0.2.2"
+const APP_VERSION = "0.3.0"
 
 function Clock() {
   const [now, setNow] = useState(() => new Date())

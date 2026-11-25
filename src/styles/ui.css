@@ -931,5 +931,10 @@ tr.open .ax-chev { transform: rotate(90deg); }
   .ax-table { table-layout: auto; }
   .ax-table col { width: auto !important; }
   .ax-table .hide-sm { display: none; }
+
+  /* App.css の「スマホではボタンを全幅」を新しいボタンには効かせない */
+  .ax-btn,
+  .ax-seg button { width: auto; }
+  .ax-page-head .ax-actions { width: 100%; }
   .ax-chain { padding-left: 14px; }
 }
