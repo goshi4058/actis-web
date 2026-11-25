@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "npx wrangler dev",
-    "build": "npx wrangler deploy",
+    "build": "node -e \"console.log('actis-auth: build step not required (deploy runs in the deploy command)')\"",
     "deploy": "npx wrangler deploy"
   }
 }
