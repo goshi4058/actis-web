@@ -1,5 +1,11 @@
 name: ACTIS Update Discord
 
+# 利用者向けのお知らせを Discord に送る。
+# .github/update-notes/vX.Y.Z.md を追加して main に push すると、その文章をそのまま送る。
+# - タイトル「🚆 ACTIS Web アップデート vX.Y.Z」とサイトへのリンクは自動で付く（バージョンはファイル名から）
+# - お知らせファイルが追加されていない push では何も送らない
+# - 一度送ったファイルを書き換えても再送しない
+
 on:
   push:
     branches:
@@ -12,7 +18,7 @@ on:
         default: false
         type: boolean
       previous_update:
-        description: "直前のアップデート内容を1回配信する"
+        description: "最新のお知らせファイルをもう一度配信する"
         required: false
         default: false
         type: boolean
@@ -21,63 +27,7 @@ permissions:
   contents: write
 
 jobs:
-  test-notify:
-    if: github.event_name == 'workflow_dispatch' && inputs.test_notification == true
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send Discord test notification
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
-            echo "DISCORD_WEBHOOK_URL is not configured."
-            exit 1
-          fi
-
-          python3 - <<'PY'
-          import json
-          import os
-          import urllib.error
-          import urllib.request
-
-          payload = {
-              "username": "ACTIS Update",
-              "embeds": [{
-                  "title": "🚆 ACTIS Web アップデート（テスト）",
-                  "description": "これはACTISのDiscord更新通知のテスト配信です。\n\n実際のサイト更新ではありません。",
-                  "url": "https://actis-web.pages.dev/",
-                  "footer": {
-                      "text": "ACTIS Web v0.1.0 • テスト配信"
-                  }
-              }]
-          }
-
-          req = urllib.request.Request(
-              os.environ["DISCORD_WEBHOOK_URL"],
-              data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-              headers={
-              "Content-Type": "application/json",
-              "User-Agent": "ACTIS-Update/0.1.0"
-          },
-              method="POST"
-          )
-
-          try:
-              with urllib.request.urlopen(req) as response:
-                  if response.status >= 300:
-                      raise SystemExit(f"Discord returned HTTP {response.status}")
-          except urllib.error.HTTPError as error:
-              body = error.read().decode("utf-8", errors="replace")
-              print(f"Discord HTTP {error.code}")
-              print(f"Discord response: {body}")
-              raise
-          PY
-
-  previous-notify:
-    if: github.event_name == 'workflow_dispatch' && inputs.previous_update == true && inputs.test_notification != true
+  notify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -86,283 +36,105 @@ jobs:
           ref: main
           fetch-depth: 0
           fetch-tags: true
-      - name: Fetch notification marker
+
+      - name: Decide what to send
+        id: find
         shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin "+refs/tags/actis-update-notified:refs/tags/actis-update-notified" || true
-          if ! git rev-parse --verify "refs/tags/actis-update-notified" >/dev/null 2>&1; then
-            echo "通知済みアップデートの記録タグ actis-update-notified が見つかりません。"
-            exit 1
-          fi
-      - name: Send previous update
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        shell: bash
+          MODE_TEST: ${{ github.event_name == 'workflow_dispatch' && inputs.test_notification == true }}
+          MODE_PREVIOUS: ${{ github.event_name == 'workflow_dispatch' && inputs.previous_update == true }}
+          BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then exit 1; fi
-          TAG="actis-update-notified"
-          if ! git rev-parse "$TAG" >/dev/null 2>&1; then echo "通知済みアップデートの記録がありません。"; exit 1; fi
-          PREV="$(git rev-parse "$TAG^")"
-          python3 - <<PY
-          import json, os, subprocess, urllib.error, urllib.request
-          prev = "${PREV}"
-          tag = "${TAG}"
-          raw = subprocess.check_output(["git","log","--format=%H%x09%s",prev+".."+tag], text=True, encoding="utf-8")
-          lines = [line.split("\t",1)[1].strip() for line in raw.splitlines() if "\t" in line]
-          description = "\n".join("• "+x for x in lines) or "直前のアップデート内容を取得できませんでした。"
-          if len(description) > 4000: description = description[:3997] + "..."
-          payload = {"username":"ACTIS Update","embeds":[{"title":"🚆 ACTIS Web 直前アップデート","description":description,"url":"https://actis-web.pages.dev/","footer":{"text":"ACTIS Web • 直前アップデート配信"}}]}
-          req=urllib.request.Request(os.environ["DISCORD_WEBHOOK_URL"],data=json.dumps(payload,ensure_ascii=False).encode("utf-8"),headers={"Content-Type":"application/json","User-Agent":"ACTIS-Update/0.1.0"},method="POST")
-          try:
-              with urllib.request.urlopen(req) as response:
-                  if response.status >= 300: raise SystemExit(f"Discord returned HTTP {response.status}")
-          except urllib.error.HTTPError as error:
-              body = error.read().decode("utf-8", errors="replace")
-              print(f"Discord HTTP {error.code}")
-              print(f"Discord response: {body}")
-              raise
-          PY
-
-  notify:
-    if: github.event_name != 'workflow_dispatch' || (inputs.test_notification != true && inputs.previous_update != true)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Check update importance
-        id: check
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="actis-update-notified"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            BASE="$TAG"
-            echo "initialized=true" >> "$GITHUB_OUTPUT"
-          else
-            BASE=""
-            echo "initialized=false" >> "$GITHUB_OUTPUT"
-          fi
-          if [ -z "$BASE" ]; then
-            echo "surface_count=0" >> "$GITHUB_OUTPUT"
-            echo "important_count=0" >> "$GITHUB_OUTPUT"
-            echo "normal_count=0" >> "$GITHUB_OUTPUT"
-            echo "minor_count=0" >> "$GITHUB_OUTPUT"
-            echo "should_notify=false" >> "$GITHUB_OUTPUT"
+          : > /tmp/notes.txt
+          if [ "$MODE_TEST" = "true" ]; then
+            echo "mode=test" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          python3 - <<PY
-          import re, subprocess
-          base = "${BASE}"
-          raw = subprocess.check_output(["git","log","--format=%H%x09%s",base+"..HEAD"], text=True, encoding="utf-8")
-          internal = ("chore:","ci:","build:","test:","refactor:","perf:","docs:","style:","deps:","dependency:","workflow:")
-          important_patterns = (r"^feat[:：]",r"^feature[:：]",r"breaking",r"重大",r"新機能",r"機能追加",r"追加",r"実装",r"security",r"セキュリティ",r"認証",r"login",r"ログイン",r"公開",r"リリース")
-          normal_patterns = (r"^fix[:：]",r"^update[:：]",r"^improve[:：]",r"^change[:：]",r"修正",r"改善",r"変更",r"デザイン",r"表示",r"画面",r"レイアウト",r"発車標",r"時刻表",r"列車",r"路線",r"スタフ",r"行路",r"共有",r"データセット",r"webhook")
-          important=[]; normal=[]; minor=[]
-          for line in raw.splitlines():
-              if "\t" not in line: continue
-              sha, subject = line.split("\t",1)
-              subject=subject.strip(); lower=subject.lower()
-              if lower.startswith(internal) or lower.startswith("merge "): continue
-              if any(re.search(p,subject,re.I) for p in important_patterns): important.append(sha)
-              elif any(re.search(p,subject,re.I) for p in normal_patterns): normal.append(sha)
-              else: minor.append(sha)
-          open("/tmp/surface_commits.txt","w",encoding="utf-8").write("\n".join(important+normal+minor))
-          open("/tmp/importance.txt","w",encoding="utf-8").write(f"{len(important)}\n{len(normal)}\n{len(minor)}\n")
-          PY
-          IMPORTANT_COUNT="$(sed -n '1p' /tmp/importance.txt)"
-          NORMAL_COUNT="$(sed -n '2p' /tmp/importance.txt)"
-          MINOR_COUNT="$(sed -n '3p' /tmp/importance.txt)"
-          SURFACE_COUNT=$((IMPORTANT_COUNT + NORMAL_COUNT + MINOR_COUNT))
-          echo "surface_count=$SURFACE_COUNT" >> "$GITHUB_OUTPUT"
-          echo "count=$SURFACE_COUNT" >> "$GITHUB_OUTPUT"
-          echo "important_count=$IMPORTANT_COUNT" >> "$GITHUB_OUTPUT"
-          echo "normal_count=$NORMAL_COUNT" >> "$GITHUB_OUTPUT"
-          echo "minor_count=$MINOR_COUNT" >> "$GITHUB_OUTPUT"
-          if [ "$IMPORTANT_COUNT" -ge 1 ]; then
-            echo "importance=重要" >> "$GITHUB_OUTPUT"
-            echo "should_notify=true" >> "$GITHUB_OUTPUT"
-          elif [ "$NORMAL_COUNT" -ge 3 ]; then
-            echo "importance=通常" >> "$GITHUB_OUTPUT"
-            echo "should_notify=true" >> "$GITHUB_OUTPUT"
+          if [ "$MODE_PREVIOUS" = "true" ]; then
+            echo "mode=previous" >> "$GITHUB_OUTPUT"
+            ls .github/update-notes/v*.md 2>/dev/null | sort -V | tail -n 1 > /tmp/notes.txt || true
           else
-            echo "importance=軽微" >> "$GITHUB_OUTPUT"
-            echo "should_notify=false" >> "$GITHUB_OUTPUT"
+            echo "mode=push" >> "$GITHUB_OUTPUT"
+            TAG="actis-update-notified"
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+              BASE="$TAG"
+            elif [ -n "${BEFORE:-}" ] && git rev-parse "$BEFORE" >/dev/null 2>&1; then
+              BASE="$BEFORE"
+            else
+              BASE=""
+            fi
+            if [ -n "$BASE" ]; then
+              git diff --name-only --diff-filter=A "$BASE" HEAD -- '.github/update-notes/v*.md' | sort -V > /tmp/notes.txt
+            fi
           fi
-      - name: Initialize notification marker
-        if: steps.check.outputs.initialized == 'false'
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -f actis-update-notified "$GITHUB_SHA"
-          git push origin -f actis-update-notified
+          echo "送るお知らせ:"
+          cat /tmp/notes.txt
 
-      - name: Prepare change list
-        if: steps.check.outputs.initialized == 'true' && steps.check.outputs.should_notify == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          python3 - <<'PY'
-          import subprocess
-
-          shas = [x for x in open("/tmp/surface_commits.txt", encoding="utf-8").read().splitlines() if x]
-          lines = []
-
-          for sha in shas:
-              data = subprocess.check_output(
-                  ["git", "show", "-s", "--format=%s%n%b", sha],
-                  text=True,
-                  encoding="utf-8"
-              ).strip()
-              if data:
-                  lines.append(data)
-
-          if not lines:
-              raise SystemExit("利用者向けの変更が見つかりませんでした。")
-
-          open("/tmp/changes.txt", "w", encoding="utf-8").write("\n\n".join(lines))
-          PY
-
-          echo "利用者向け変更:"
-          cat /tmp/changes.txt
-
-      - name: Prepare Japanese update text
-        if: steps.check.outputs.initialized == 'true' && steps.check.outputs.should_notify == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          python3 - <<'PY'
-          import re
-          import subprocess
-
-          shas = [x for x in open("/tmp/surface_commits.txt", encoding="utf-8").read().splitlines() if x]
-          updates = []
-
-          def clean_subject(subject):
-              subject = re.sub(
-                  r"^(feat|feature|fix|add|added|update|improve|change|変更|修正|追加|実装|改善)\s*[:：]\s*",
-                  "",
-                  subject.strip(),
-                  flags=re.I,
-              )
-              return subject
-
-          def normalize_body(body):
-              lines = []
-              for line in body.splitlines():
-                  line = line.strip()
-                  if not line:
-                      continue
-                  line = re.sub(r"^[-*+]\s*", "", line)
-                  line = re.sub(r"^\d+[.)]\s*", "", line)
-                  if line and line not in lines:
-                      lines.append(line)
-              return lines
-
-          for sha in shas:
-              raw = subprocess.check_output(
-                  ["git", "show", "-s", "--format=%s%n%n%b", sha],
-                  text=True,
-                  encoding="utf-8"
-              ).strip()
-              if not raw:
-                  continue
-
-              parts = raw.split("\n\n", 1)
-              subject = clean_subject(parts[0])
-              body = normalize_body(parts[1] if len(parts) > 1 else "")
-
-              # Commit本文がある場合は、それを優先して利用者向けの詳細として掲載。
-              # 本文がない場合でも、コミット件名をそのまま捨てず、変更内容として残す。
-              detail = body[:8]
-              updates.append((subject, detail))
-
-          if not updates:
-              raise SystemExit("利用者向けの変更が見つかりませんでした。")
-
-          # 同じ件名はまとめず、今回の更新で行われた変更を個別に残す。
-          sections = []
-          for subject, details in updates:
-              lines = [f"**{subject}**"]
-              if details:
-                  lines.extend("・" + x[:180] for x in details)
-              sections.append("\n".join(lines))
-
-          # 開発者向けの前置き・後置きは付けず、利用者が変更内容だけを確認できる形で配信する。
-          body = "\n\n".join(sections)
-          open("/tmp/update.txt", "w", encoding="utf-8").write(body)
-          PY
-
-          echo "ユーザー向け更新内容:"
-          cat /tmp/update.txt
-
-      - name: Send Discord notification
-        if: steps.check.outputs.initialized == 'true' && steps.check.outputs.should_notify == 'true'
+      - name: Send to Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          COMMIT_COUNT: ${{ steps.check.outputs.count }}
-          IMPORTANCE: ${{ steps.check.outputs.importance }}
+          MODE: ${{ steps.find.outputs.mode }}
         shell: bash
         run: |
           set -euo pipefail
-
-          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
-            echo "DISCORD_WEBHOOK_URL is not configured."
-            exit 1
-          fi
-
           python3 - <<'PY'
-          import json
-          import os
-          import urllib.error
-          import urllib.request
+          import json, os, re, urllib.error, urllib.request
 
-          update = open("/tmp/update.txt", encoding="utf-8").read().strip()
-          lines = [line.strip() for line in update.splitlines() if line.strip()]
-          description = "\n".join(f"• {line}" for line in lines)
-          if len(description) > 4000:
-              description = description[:3997] + "..."
+          url = os.environ.get("DISCORD_WEBHOOK_URL")
+          if not url:
+              raise SystemExit("DISCORD_WEBHOOK_URL is not configured.")
 
-          payload = {
-              "username": "ACTIS Update",
-              "embeds": [{
-                  "title": f"🚆 ACTIS Web アップデート【{os.environ['IMPORTANCE']}】",
-                  "description": description,
-                  "url": "https://actis-web.pages.dev/",
-                  "footer": {
-                      "text": f"ACTIS Web v0.1.0 • 重要度: {os.environ['IMPORTANCE']} • {os.environ['COMMIT_COUNT']}件の変更"
-                  }
-              }]
-          }
+          def post(title, description, footer):
+              payload = {
+                  "username": "ACTIS Update",
+                  "embeds": [{
+                      "title": title,
+                      "description": description[:4096],
+                      "url": "https://actis-web.pages.dev/",
+                      "footer": {"text": footer},
+                  }],
+              }
+              req = urllib.request.Request(
+                  url,
+                  data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                  headers={"Content-Type": "application/json", "User-Agent": "ACTIS-Update/1.0"},
+                  method="POST",
+              )
+              try:
+                  with urllib.request.urlopen(req) as res:
+                      if res.status >= 300:
+                          raise SystemExit(f"Discord returned HTTP {res.status}")
+              except urllib.error.HTTPError as e:
+                  print(f"Discord HTTP {e.code}: {e.read().decode('utf-8', errors='replace')}")
+                  raise
 
-          req = urllib.request.Request(
-              os.environ["DISCORD_WEBHOOK_URL"],
-              data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-              headers={"Content-Type": "application/json", "User-Agent": "ACTIS-Update/0.1.0"},
-              method="POST"
-          )
+          if os.environ["MODE"] == "test":
+              post("🚆 ACTIS Web アップデート（テスト）",
+                   "これはACTISのDiscord更新通知のテスト配信です。\n\n実際のサイト更新ではありません。",
+                   "ACTIS Web")
+              raise SystemExit(0)
 
-          try:
-              with urllib.request.urlopen(req) as response:
-                  if response.status >= 300:
-                      raise SystemExit(f"Discord returned HTTP {response.status}")
-          except urllib.error.HTTPError as error:
-              body = error.read().decode("utf-8", errors="replace")
-              print(f"Discord HTTP {error.code}")
-              print(f"Discord response: {body}")
-              raise
+          paths = [p for p in open("/tmp/notes.txt", encoding="utf-8").read().splitlines() if p]
+          if not paths:
+              print("送るお知らせはありません。")
+              if os.environ["MODE"] == "previous":
+                  raise SystemExit("お知らせファイルがありません。")
+          for path in paths:
+              m = re.search(r"v(\d+\.\d+\.\d+)\.md$", path)
+              version = m.group(1) if m else ""
+              text = open(path, encoding="utf-8").read().strip()
+              if not text:
+                  print(f"{path} が空なので送りません。")
+                  continue
+              post(f"🚆 ACTIS Web アップデート v{version}" if version else "🚆 ACTIS Web アップデート",
+                   text,
+                   f"ACTIS Web v{version}" if version else "ACTIS Web")
+              print(f"送信しました: {path}")
           PY
 
       - name: Move notification marker
-        if: steps.check.outputs.initialized == 'true' && steps.check.outputs.should_notify == 'true'
+        if: steps.find.outputs.mode == 'push'
         shell: bash
         run: |
           set -euo pipefail
